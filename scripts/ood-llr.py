@@ -188,7 +188,7 @@ def load_model_and_data(checkpoint_path):
     LOGGER.info("%s", datamodule)
     dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
     dataloaders |= {(k + " test", v) for k, v in datamodule.test_loaders.items()}
-    return model, datamodule, dataloader
+    return model, datamodule, dataloaders
 
 
 if __name__ == "__main__":
