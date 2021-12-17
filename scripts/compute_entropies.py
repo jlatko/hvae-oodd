@@ -122,7 +122,7 @@ if __name__ == "__main__":
     complexity_metric = complexity_metrics[args.complexity]
 
     for dataset, dataloader in dataloaders:
-        dataset = dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
+        # dataset = dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
         print(f"Evaluating {dataset}")
 
         n = 0
