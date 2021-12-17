@@ -190,7 +190,6 @@ def load_model_and_data(checkpoint_path):
     dataloaders |= {(k + " test", v) for k, v in datamodule.test_loaders.items()}
     return model, datamodule, dataloaders
 
-
 if __name__ == "__main__":
     checkpoint_path, run = load_run()
     setup_wandb(run)
