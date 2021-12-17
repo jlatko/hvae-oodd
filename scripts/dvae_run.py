@@ -2,6 +2,11 @@ import argparse
 import datetime
 import logging
 import os
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,7 +14,7 @@ import rich
 import sklearn.metrics
 import torch
 import torch.utils.data
-
+import wandb
 from tqdm import tqdm
 
 import oodd
@@ -17,6 +22,7 @@ import oodd.models
 import oodd.datasets
 import oodd.variational
 import oodd.losses
+from oodd.datasets.data_module import parse_dataset_argument
 
 from oodd.utils import str2bool, get_device, log_sum_exp, set_seed, plot_gallery
 from oodd.evaluators import Evaluator
@@ -31,13 +37,14 @@ parser.add_argument("--epochs", type=int, default=1000, help="number of epochs t
 parser.add_argument("--learning_rate", type=float, default=3e-4, help="learning rate")
 parser.add_argument("--samples", type=int, default=1, help="samples from approximate posterior")
 parser.add_argument("--importance_weighted", type=str2bool, default=False, const=True, nargs="?", help="use iw bound")
-parser.add_argument("--warmup_epochs", type=int, default=0, help="epochs to warm up the KL term.")
-parser.add_argument("--free_nats_epochs", type=int, default=0, help="epochs to warm up the KL term.")
-parser.add_argument("--free_nats", type=float, default=0, help="nats considered free in the KL term")
+parser.add_argument("--warmup_epochs", type=int, default=200, help="epochs to warm up the KL term.")
+parser.add_argument("--free_nats_epochs", type=int, default=400, help="epochs to warm up the KL term.")
+parser.add_argument("--free_nats", type=float, default=2, help="nats considered free in the KL term")
 parser.add_argument("--n_eval_samples", type=int, default=32, help="samples from prior for quality inspection")
 parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed")
-parser.add_argument("--test_every", type=int, default=1, help="epochs between evaluations")
-parser.add_argument("--save_dir", type=str, default="/scratch/s193223/oodd/models", help="directory for saving models")
+parser.add_argument("--test_every", type=int, default=10, help="epochs between evaluations")
+parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving models")
+parser.add_argument("--tqdm", action= "store_true", help="whether to display progressbar")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args, unknown_args = parser.parse_known_args()
@@ -48,6 +55,23 @@ args.sample_reduction = log_sum_exp if args.importance_weighted else torch.mean
 set_seed(args.seed)
 device = get_device()
 
+def setup_wandb(train_dataset_name):
+    # add tags and initialize wandb run
+    tags = [train_dataset_name, f"seed_{args.seed}", "train"]
+
+    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    args.save_dir = wandb.run.dir
+
+    # wandb configuration
+    run_name = train_dataset_name + "-" + wandb.run.name.split("-")[-1]
+    wandb.run.name = run_name
+    wandb.config.update(args)
+    wandb.config.update({"train_dataset": train_dataset_name})
+    wandb.run.save()
+
+    # save checkpoints
+    wandb.save("*.pt")
+
 
 def train(epoch):
     model.train()
@@ -56,7 +80,8 @@ def train(epoch):
     beta = next(deterministic_warmup)
     free_nats = next(free_nats_cooldown)
 
-    iterator = tqdm(enumerate(datamodule.train_loader), smoothing=0.9, total=len(datamodule.train_loader), leave=False)
+    iterator = tqdm(enumerate(datamodule.train_loader), smoothing=0.9, total=len(datamodule.train_loader), leave=False, disable=(not args.tqdm))
+    s = time.time()
     for _, (x, _) in iterator:
         x = x.to(device)
 
@@ -89,6 +114,11 @@ def train(epoch):
         klds["KL(q(z|x), p(z))"] = kl_divergences
         evaluator.update("Train", "divergences", klds)
 
+    # log time
+    time_passed = time.time() - s
+    print(f"Took: {time_passed:.2f} seconds")
+    wandb.log({"training time": time_passed}, step=epoch * len(datamodule.train_loader))
+
     evaluator.update(
         "Train", "hyperparameters", {"free_nats": [free_nats], "beta": [beta], "learning_rate": [args.learning_rate]}
     )
@@ -101,6 +131,7 @@ def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=fl
     LOGGER.info(f"Testing: {dataset_name}")
     model.eval()
 
+    # visualize reconstructions
     x, _ = next(iter(dataloader))
     x = x.to(device)
     n = min(x.size(0), 8)
@@ -109,14 +140,25 @@ def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=fl
     p_x_samples = likelihood_data.samples[: args.batch_size].view(
         args.batch_size, *in_shape
     )  # Reshape the zeroth "sample"
-    comparison = torch.cat([x[:n], p_x_mean[:n], p_x_samples[:n]])
+
+    decode_from_p = [True] * (model.n_latents - 1) + [False]
+    likelihood_data, stage_datas = model(x, n_posterior_samples=args.samples, decode_from_p=decode_from_p, use_mode=decode_from_p)
+    p_x_mean_top = likelihood_data.mean[: args.batch_size].view(args.batch_size, *in_shape)  # Reshape the zeroth "sample"
+    p_x_samples_top = likelihood_data.samples[: args.batch_size].view(
+        args.batch_size, *in_shape
+    )  # Reshape the zeroth "sample"
+
+    comparison = torch.cat([x[:n], p_x_mean[:n], p_x_samples[:n], p_x_mean_top[:n], p_x_samples_top[:n]])
     comparison = comparison.permute(0, 2, 3, 1)  # [B, H, W, C]
-    fig, ax = plot_gallery(comparison.cpu().numpy(), ncols=n)
+    fig, ax, img = plot_gallery(comparison.cpu().numpy(), ncols=n)
     fig.savefig(os.path.join(args.save_dir, f"reconstructions_{dataset_name}_{epoch:03}"))
     plt.close()
+    images = wandb.Image(img, caption=f"reconstructions_{dataset_name}_{epoch:03}")
+    wandb.log({f"reconstructions_{dataset_name}": images}, step=epoch * len(datamodule.train_loader))
 
+    # Evaluations
     decode_from_p_combinations = [[True] * n_p + [False] * (model.n_latents - n_p) for n_p in range(model.n_latents)]
-    for decode_from_p in tqdm(decode_from_p_combinations, leave=False):
+    for decode_from_p in tqdm(decode_from_p_combinations, leave=False, disable=(not args.tqdm)):
         n_skipped_latents = sum(decode_from_p)
 
         if max_test_examples != float("inf"):
@@ -125,9 +167,10 @@ def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=fl
                 smoothing=0.9,
                 total=max_test_examples // dataloader.batch_size,
                 leave=False,
+                disable=(not args.tqdm)
             )
         else:
-            iterator = tqdm(enumerate(dataloader), smoothing=0.9, total=len(dataloader), leave=False)
+            iterator = tqdm(enumerate(dataloader), smoothing=0.9, total=len(dataloader), leave=False, disable=(not args.tqdm))
 
         for _, (x, _) in iterator:
             x = x.to(device)
@@ -253,8 +296,9 @@ if __name__ == "__main__":
         val_datasets=args.val_datasets,
         test_datasets=args.test_datasets,
     )
-    args.save_dir = os.path.join(args.save_dir, list(datamodule.train_datasets.keys())[0] + "-" + args.start_time)
-    os.makedirs(args.save_dir, exist_ok=True)
+    train_dataset_name = list(datamodule.train_datasets.keys())[0]
+    setup_wandb(train_dataset_name)
+    # os.makedirs(args.save_dir, exist_ok=True)
 
     fh = logging.FileHandler(os.path.join(args.save_dir, "dvae.log"))
     fh.setLevel(logging.INFO)
@@ -268,6 +312,9 @@ if __name__ == "__main__":
     model_argparser = model.get_argparser()
     model_args, unknown_model_args = model_argparser.parse_known_args()
     model_args.input_shape = in_shape
+    # update wandb
+    wandb.config.update(model_args)
+    wandb.run.save()
 
     model = model(**vars(model_args)).to(device)
 
@@ -314,9 +361,11 @@ if __name__ == "__main__":
                 p_x_mean = likelihood_data.mean.view(args.n_eval_samples, *in_shape)
                 comparison = torch.cat([p_x_samples, p_x_mean])
                 comparison = comparison.permute(0, 2, 3, 1)  # [B, H, W, C]
-                fig, ax = plot_gallery(comparison.cpu().numpy(), ncols=args.n_eval_samples // 4)
+                fig, ax, img = plot_gallery(comparison.cpu().numpy(), ncols=args.n_eval_samples // 4)
                 fig.savefig(os.path.join(args.save_dir, f"samples_{epoch:03}"))
                 plt.close()
+                images = wandb.Image(img, caption=f"samples_{epoch:03}")
+                wandb.log({"samples": images}, step=epoch * len(datamodule.train_loader))
 
             # Test
             for name, dataloader in datamodule.val_loaders.items():
