@@ -138,6 +138,10 @@ if __name__ == "__main__":
                 break
 
         print(f"mean {args.complexity}({args.complexity_param}): ", np.mean(complexities[dataset]))
+        wandb.log({
+            f"{dataset} mean {args.complexity}({args.complexity_param}): ": np.mean(complexities[dataset]),
+            f"{dataset} std {args.complexity}({args.complexity_param}): ": np.std(complexities[dataset]),
+        })
 
 
     for dataset in sorted(complexities.keys()):
