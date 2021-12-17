@@ -50,7 +50,7 @@ def load_run():
 def setup_wandb(run):
     tags = [tag for tag in run.tags if tag != "train"]
     # add tags and initialize wandb run
-    tags = [tags, "stats", args.run_id]
+    tags += ["stats", args.run_id]
 
     wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
