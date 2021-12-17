@@ -283,6 +283,7 @@ def subsample_labels_and_scores(y_true, y_score, n_examples):
     indices = [np.random.choice(np.where(y_true == i)[0], n_examples, replace=False) for i in set(y_true)]
     y_true = np.concatenate([y_true[idx] for idx in indices])
     y_score = np.concatenate([y_score[idx] for idx in indices])
+    y_score = np.nan_to_num(y_score, posinf=1000000, neginf=1000000)
     return y_true, y_score
 
 

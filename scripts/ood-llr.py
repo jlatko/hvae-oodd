@@ -43,7 +43,7 @@ rich.print(vars(args))
 def load_run():
     api = wandb.Api()
     run = api.run(f"johnnysummer/hvae/{args.run_id}")
-    checkpoint_path = find_or_download_checkpoint(run)
+    checkpoint_path = find_or_download_checkpoint(run=run)
     return checkpoint_path, run
 
 
