@@ -14,7 +14,7 @@
   "Omniglot28x28Dequantized": {"split": "validation"},
   "Omniglot28x28InvertedDequantized": {"split": "validation"},
   "SmallNORB28x28Dequantized": {"split": "validation"},
-  "KMNISTDequantized": {"split": "validation"}
+  "KMNISTDequantized": {"split": "validation"},
   "CIFAR10DequantizedFirstHalf": {"dynamic": false, "split": "validation"},
   "CIFAR10DequantizedSecondHalf": {"dynamic": false, "split": "validation"},
   "CIFAR100DequantizedFirstHalf": {"dynamic": false, "split": "validation"},
