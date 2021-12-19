@@ -32,7 +32,6 @@ parser.add_argument("--run_id", type=str, help="wandb run id")
 parser.add_argument("--iw_samples_elbo", type=int, default=1, help="importances samples for regular ELBO")
 parser.add_argument("--iw_samples_Lk", type=int, default=1, help="importances samples for L>k bound")
 parser.add_argument("--n_eval_examples", type=int, default=float("inf"), help="cap on the number of examples to use")
-parser.add_argument("--n_latents_skip", type=int, default=1, help="the value of k in the paper")
 parser.add_argument("--batch_size", type=int, default=500, help="batch size for evaluation")
 parser.add_argument("--device", type=str, default="auto", help="device to evaluate on")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
@@ -190,6 +189,46 @@ def load_model_and_data(checkpoint_path):
     dataloaders |= {(k + " test", v) for k, v in datamodule.test_loaders.items()}
     return model, datamodule, dataloaders
 
+
+def get_elbo_and_stats(decode_from_p, use_mode):
+    sample_elbos = []
+    sample_likelihoods = []
+    sample_kls = []
+    sample_stats = defaultdict(list)
+
+    for i in tqdm(range(args.iw_samples_elbo), leave=False):
+        likelihood_data, stage_datas = model(x, decode_from_p=decode_from_p, use_mode=use_mode)
+        kl_divergences = [
+            stage_data.loss.kl_elementwise
+            for stage_data in stage_datas
+            if stage_data.loss.kl_elementwise is not None
+        ]
+
+        update_sample_stats(sample_stats, stage_datas)
+
+        loss, elbo, likelihood, kl_divergences = criterion(
+            likelihood_data.likelihood,
+            kl_divergences,
+            samples=1,
+            free_nats=0,
+            beta=1,
+            sample_reduction=None,
+            batch_reduction=None,
+        )
+        sample_elbos.append(elbo.detach())
+        sample_likelihoods.append(likelihood.detach())
+        sample_kls.append(kl_divergences.detach())
+
+    sample_elbos = torch.stack(sample_elbos, axis=0)
+    sample_elbo = oodd.utils.log_sum_exp(sample_elbos, axis=0)
+    sample_likelihoods = torch.stack(sample_likelihoods, axis=0)
+    sample_likelihoods = oodd.utils.log_sum_exp(sample_likelihoods, axis=0)
+    sample_kls = torch.stack(sample_kls, axis=0)
+    sample_kls = oodd.utils.log_sum_exp(sample_kls, axis=0)
+    sample_stats = stack_and_mean(sample_stats)
+
+    return sample_elbo, sample_likelihoods, sample_kls, sample_stats
+
 if __name__ == "__main__":
     checkpoint_path, run = load_run()
     setup_wandb(run)
@@ -198,7 +237,7 @@ if __name__ == "__main__":
     device = oodd.utils.get_device() if args.device == "auto" else torch.device(args.device)
     LOGGER.info("Device %s", device)
 
-    FILE_NAME_SETTINGS_SPEC = f"k{args.n_latents_skip}-iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
+    FILE_NAME_SETTINGS_SPEC = f"iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
 
     # Add additional datasets to evaluation
     TRAIN_DATASET_KEY = list(datamodule.train_datasets.keys())[0]
@@ -221,19 +260,9 @@ if __name__ == "__main__":
     LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
 
     criterion = oodd.losses.ELBO()
-    decode_from_p = get_decode_from_p(model.n_latents, k=args.n_latents_skip)
 
 
-    scores = defaultdict(list)
-    elbos = defaultdict(list)
-    elbos_k = defaultdict(list)
-    likelihoods = defaultdict(list)
-    likelihoods_k = defaultdict(list)
-
-    stats = defaultdict(lambda: defaultdict(list))
-    stats_k = defaultdict(lambda: defaultdict(list))
-    stats_scores_sub = defaultdict(lambda: defaultdict(list))
-    stats_scores_div = defaultdict(lambda: defaultdict(list))
+    all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
     with torch.no_grad():
         for dataset, dataloader in dataloaders:
@@ -245,104 +274,73 @@ if __name__ == "__main__":
                 x = x.to(device)
 
                 n += x.shape[0]
-                sample_elbos, sample_elbos_k = [], []
-                sample_likelihoods, sample_likelihoods_k = [], []
-                sample_stats, sample_stats_k = defaultdict(list), defaultdict(list)
+                (
+                    sample_elbo,
+                    sample_likelihoods,
+                    sample_kls,
+                    sample_stats
+                 ) = get_elbo_and_stats(False, False)
 
-                # Regular ELBO
-                for i in tqdm(range(args.iw_samples_elbo), leave=False):
-                    likelihood_data, stage_datas = model(x, decode_from_p=False, use_mode=False)
-                    kl_divergences = [
-                        stage_data.loss.kl_elementwise
-                        for stage_data in stage_datas
-                        if stage_data.loss.kl_elementwise is not None
-                    ]
+                # dataset, k, score name
+                all_scores[dataset][0]['ELBO'].extend(sample_elbo.tolist())
+                all_scores[dataset][0]['likelihood'].extend(sample_likelihoods.tolist())
+                all_scores[dataset][0]['KL'].extend(sample_kls.tolist())
+                for stat, v in sample_stats.items():
+                    all_scores[dataset][0][stat].extend(v.tolist())
 
-                    update_sample_stats(sample_stats, stage_datas)
+                for k in range(1, model.n_latents):
+                    decode_from_p = get_decode_from_p(model.n_latents, k=k)
+                    (
+                        sample_elbo_k,
+                        sample_likelihoods_k,
+                        sample_kls_k,
+                        sample_stats_k
+                     ) = get_elbo_and_stats(decode_from_p=decode_from_p, use_mode=decode_from_p)
 
-                    loss, elbo, likelihood, kl_divergences = criterion(
-                        likelihood_data.likelihood,
-                        kl_divergences,
-                        samples=1,
-                        free_nats=0,
-                        beta=1,
-                        sample_reduction=None,
-                        batch_reduction=None,
-                    )
-                    sample_elbos.append(elbo.detach())
-                    sample_likelihoods.append(likelihood.detach())
+                    # dataset, k, score name
+                    all_scores[dataset][k]['ELBO'].extend(sample_elbo_k.tolist())
+                    all_scores[dataset][k]['likelihood'].extend(sample_likelihoods_k.tolist())
+                    all_scores[dataset][k]['KL'].extend(sample_kls_k.tolist())
+                    for stat, v in sample_stats_k.items():
+                        all_scores[dataset][k][stat].extend(v.tolist())
 
-                # L>k bound
-                for i in tqdm(range(args.iw_samples_Lk), leave=False):
-                    likelihood_data_k, stage_datas_k = model(x, decode_from_p=decode_from_p, use_mode=decode_from_p)
-                    kl_divergences_k = [
-                        stage_data.loss.kl_elementwise
-                        for stage_data in stage_datas
-                        if stage_data.loss.kl_elementwise is not None
-                    ]
-                    loss_k, elbo_k, likelihood_k, kl_divergences_k = criterion(
-                        likelihood_data_k.likelihood,
-                        kl_divergences_k,
-                        samples=1,
-                        free_nats=0,
-                        beta=1,
-                        sample_reduction=None,
-                        batch_reduction=None,
-                    )
+                    # Get ratio scores
+                    LLR = sample_elbo - sample_elbo_k
+                    LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
+                    KL_RATIO = sample_kls - sample_kls_k
 
-                    update_sample_stats(sample_stats_k, stage_datas_k)
-                    sample_elbos_k.append(elbo_k.detach())
-                    sample_likelihoods_k.append(likelihood_k.detach())
+                    all_scores[dataset][k]['LLR'].extend(LLR.tolist())
+                    all_scores[dataset][k]['LIKELIHOOD_RATIO'].extend(LLR.tolist())
+                    all_scores[dataset][k]['KL_RATIO'].extend(LLR.tolist())
 
-                sample_elbos = torch.stack(sample_elbos, axis=0)
-                sample_elbos_k = torch.stack(sample_elbos_k, axis=0)
-
-                sample_elbo = oodd.utils.log_sum_exp(sample_elbos, axis=0)
-                sample_elbo_k = oodd.utils.log_sum_exp(sample_elbos_k, axis=0)
-
-                sample_likelihoods = torch.stack(sample_likelihoods, axis=0)
-                sample_likelihoods_k = torch.stack(sample_likelihoods_k, axis=0)
-                sample_likelihoods = oodd.utils.log_sum_exp(sample_likelihoods, axis=0)
-                sample_likelihoods_k = oodd.utils.log_sum_exp(sample_likelihoods_k, axis=0)
-
-                sample_stats = stack_and_mean(sample_stats)
-                sample_stats_k = stack_and_mean(sample_stats_k)
-
-                sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
-                sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
-                score = sample_elbo - sample_elbo_k
-
-                scores[dataset].extend(score.tolist())
-                elbos[dataset].extend(sample_elbo.tolist())
-                elbos_k[dataset].extend(sample_elbo_k.tolist())
-                likelihoods[dataset].extend(sample_likelihoods.tolist())
-                likelihoods_k[dataset].extend(sample_likelihoods_k.tolist())
-
-                for k, v in sample_stats.items():
-                    stats[dataset][k].extend(v.tolist())
-                for k, v in sample_stats_k.items():
-                    stats_k[dataset][k].extend(v.tolist())
-                for k, v in sample_stats_scores_sub.items():
-                    stats_scores_sub[dataset][k + '_sub'].extend(v.tolist())
-                for k, v in sample_stats_scores_div.items():
-                    stats_scores_div[dataset][k + '_div'].extend(v.tolist())
+                    # also for other stats?
+                    sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
+                    sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
+                    for stat, v in sample_stats_scores_sub.items():
+                        all_scores[dataset][k][stat + '_sub'].extend(v.tolist())
+                    for stat, v in sample_stats_scores_div.items():
+                        all_scores[dataset][k][stat + '_div'].extend(v.tolist())
 
                 if n > N_EQUAL_EXAMPLES_CAP:
                     LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP=}")
                     break
 
-    # print likelihoods
-    for dataset in sorted(scores.keys()):
-        print("===============", dataset, "===============")
-        print_stats(scores[dataset], elbos[dataset], elbos_k[dataset])
+    # pickle.save(get_save_path(f"all-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt")
+    torch.save({
+        dataset: {
+            k: {
+                stat: values for stat, values in v.items()
+            } for k, v in d.items()
+        } for dataset, d in all_scores.items()
+    }, get_save_path(f"all-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
 
-    # save scores
-    torch.save(scores, get_save_path(f"values-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save(elbos, get_save_path(f"values-elbos-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save(elbos_k, get_save_path(f"values-elbos_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save(likelihoods, get_save_path(f"values-likelihoods-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save(likelihoods_k, get_save_path(f"values-likelihoods_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save({f"{dataset}|{k}": v for dataset, d in stats.items() for k, v in d.items() }, get_save_path(f"values-stats-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save({f"{dataset}|{k}": v for dataset, d in stats_k.items() for k, v in d.items() }, get_save_path(f"values-stats_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_sub.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_sub-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-    torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_div.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_div-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # # save scores
+    # torch.save(scores, get_save_path(f"values-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save(elbos, get_save_path(f"values-elbos-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save(elbos_k, get_save_path(f"values-elbos_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save(likelihoods, get_save_path(f"values-likelihoods-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save(likelihoods_k, get_save_path(f"values-likelihoods_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save({f"{dataset}|{k}": v for dataset, d in stats.items() for k, v in d.items() }, get_save_path(f"values-stats-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save({f"{dataset}|{k}": v for dataset, d in stats_k.items() for k, v in d.items() }, get_save_path(f"values-stats_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_sub.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_sub-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    # torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_div.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_div-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
