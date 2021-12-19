@@ -51,8 +51,11 @@ if __name__ == "__main__":
 
     # results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(defaultdict)))))
     results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(defaultdict))))
-
-    for reference_dataset in data.keys():
+    reference_datasets = sorted(
+        list(data.keys()),
+        key=lambda x: ("a" if "Binarized" in x else "b") + x.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
+    )
+    for reference_dataset in reference_datasets:
         reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
         test_datasets = sorted(list(data[reference_dataset].keys()))
 
@@ -67,18 +70,20 @@ if __name__ == "__main__":
         # TODO: is it reference?
         reference_dataset_key = reference_dataset_key[0]
 
-        print(f"========== {reference_dataset} (in-distribution) ==========\n")
+        # print(f"========== {reference_dataset} (in-distribution) ==========\n")
 
         for test_dataset in test_datasets:
             if test_dataset.split()[0] == reference_dataset_stripped:
                 continue
 
-            print(f"-- {reference_dataset} (in-distribution) vs {test_dataset} (out-of-distribution) --")
+            print(f"--- {reference_dataset}  vs {test_dataset} ---")
 
             k_values = sorted(list(data[reference_dataset][test_dataset].keys()))
             for k in k_values:
 
                 score_names = sorted(list(data[reference_dataset][test_dataset][k].keys()))
+
+                s = f"{k} | "
 
                 for score_name in score_names:
                     reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][score_name])
@@ -131,9 +136,8 @@ if __name__ == "__main__":
                     })
 
                     if score_name in SCORES_TO_SHOW:
-                        print(f">{k} | {score_name:20s} | AUROC: {roc_auc:.3f}")
-
-                print("--")
+                        s += f"{score_name:10s}: {roc_auc:.3f} | "
+                print(s)
         print("")
 
     results_df = pd.DataFrame(ALL_RESULTS)
