@@ -83,13 +83,16 @@ if __name__ == "__main__":
                 for score_name in score_names:
                     reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][score_name])
                     test_scores = np.array(data[reference_dataset][test_dataset][k][score_name])
+                    any_nan = False
 
                     if np.any(np.isnan(reference_scores)):
                         print(f"WARNING: nan in reference {score_name}")
                         reference_scores = np.nan_to_num(reference_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
+                        any_nan = True
                     if np.any(np.isnan(test_scores)):
                         print(f"WARNING: nan in test {score_name}")
                         test_scores = np.nan_to_num(test_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
+                        any_nan = True
 
                     if score_name in SCORES_TO_NEGATE:
                         reference_scores = -reference_scores
@@ -122,6 +125,7 @@ if __name__ == "__main__":
                         "AUPRC": pr_auc,
                         "FPR80": fpr80,
                         "stat": score_name,
+                        "nan": any_nan
                     })
 
                     if score_name in SCORES_TO_SHOW:
