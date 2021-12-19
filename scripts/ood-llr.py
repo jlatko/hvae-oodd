@@ -236,7 +236,7 @@ def get_elbo_and_stats(decode_from_p, use_mode):
     return sample_elbo, sample_likelihoods, sample_kls, sample_stats
 
 if __name__ == "__main__":
-    FILE_NAME_SETTINGS_SPEC = f"iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
+    # FILE_NAME_SETTINGS_SPEC = f"iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
 
     # train dataset, val datasets, k, stat name
     all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
@@ -346,7 +346,7 @@ if __name__ == "__main__":
                 } for k, d3 in d2.items()
             } for dataset, d2 in d1.items()
         } for in_dataset, d1 in all_scores.items()
-    }, get_save_path(f"all-scores-{FILE_NAME_SETTINGS_SPEC}.pt"))
+    }, get_save_path("all-scores.pt"))
 
         # # save scores
         # torch.save(scores, get_save_path(f"values-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
