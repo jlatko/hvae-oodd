@@ -295,7 +295,7 @@ if __name__ == "__main__":
 
                     # dataset, k, score name
                     all_scores[TRAIN_DATASET_KEY][dataset][0]['ELBO'].extend(sample_elbo.tolist())
-                    all_scores[TRAIN_DATASET_KEY][dataset][0]['likelihood'].extend(sample_likelihoods.tolist())
+                    all_scores[TRAIN_DATASET_KEY][dataset][0]['LIKELIHOOD'].extend(sample_likelihoods.tolist())
                     all_scores[TRAIN_DATASET_KEY][dataset][0]['KL'].extend(sample_kls.tolist())
                     for stat, v in sample_stats.items():
                         all_scores[TRAIN_DATASET_KEY][dataset][0][stat].extend(v.tolist())
@@ -311,7 +311,7 @@ if __name__ == "__main__":
 
                         # dataset, k, score name
                         all_scores[TRAIN_DATASET_KEY][dataset][k]['ELBO'].extend(sample_elbo_k.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k]['likelihood'].extend(sample_likelihoods_k.tolist())
+                        all_scores[TRAIN_DATASET_KEY][dataset][k]['LIKELIHOOD'].extend(sample_likelihoods_k.tolist())
                         all_scores[TRAIN_DATASET_KEY][dataset][k]['KL'].extend(sample_kls_k.tolist())
                         for stat, v in sample_stats_k.items():
                             all_scores[TRAIN_DATASET_KEY][dataset][k][stat].extend(v.tolist())

@@ -20,7 +20,7 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 args = parser.parse_args()
 rich.print(vars(args))
 
-SCORES_TO_NEGATE = []
+SCORES_TO_NEGATE = ["ELBO"]
 SCORES_TO_SHOW = ["LLR", "ELBO", "LIKELIHOOD", "KL", "p_var_1", "p_var_sum"]
 
 
@@ -67,13 +67,13 @@ if __name__ == "__main__":
         # TODO: is it reference?
         reference_dataset_key = reference_dataset_key[0]
 
-        print(f"========== {reference_dataset} (in-distribution) ==========")
+        print(f"========== {reference_dataset} (in-distribution) ==========\n")
 
         for test_dataset in test_datasets:
             if test_dataset.split()[0] == reference_dataset_stripped:
                 continue
 
-            print(f"========== {test_dataset} (out-of-distribution) ==========")
+            print(f"-- {reference_dataset} (in-distribution) vs {test_dataset} (out-of-distribution) --")
 
             k_values = sorted(list(data[reference_dataset][test_dataset].keys()))
             for k in k_values:
@@ -134,6 +134,7 @@ if __name__ == "__main__":
                         print(f">{k} | {score_name:20s} | AUROC: {roc_auc:.3f}")
 
                 print("--")
+        print("")
 
     results_df = pd.DataFrame(ALL_RESULTS)
     results_df.to_csv("results.csv", index=False)
