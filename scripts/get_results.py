@@ -20,7 +20,7 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 args = parser.parse_args()
 rich.print(vars(args))
 
-SCORES_TO_NEGATE = ["ELBO"]
+SCORES_TO_NEGATE = ["ELBO", 'LIKELIHOOD']
 SCORES_TO_SHOW = ["LLR", "ELBO", "LIKELIHOOD", "KL", "p_var_1", "p_var_sum"]
 
 
