@@ -86,11 +86,13 @@ if __name__ == "__main__":
                     any_nan = False
 
                     if np.any(np.isnan(reference_scores)):
-                        print(f"WARNING: nan in reference {score_name}")
+                        if score_name in SCORES_TO_SHOW:
+                            print(f"WARNING: nan in reference {score_name}")
                         reference_scores = np.nan_to_num(reference_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
                         any_nan = True
                     if np.any(np.isnan(test_scores)):
-                        print(f"WARNING: nan in test {score_name}")
+                        if score_name in SCORES_TO_SHOW:
+                            print(f"WARNING: nan in test {score_name}")
                         test_scores = np.nan_to_num(test_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
                         any_nan = True
 
