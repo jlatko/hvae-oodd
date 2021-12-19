@@ -242,16 +242,12 @@ if __name__ == "__main__":
     all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
 
     run_ids = args.run_ids.split(",")
+    setup_wandb()
 
     for run_id in run_ids:
         LOGGER.info("RUN ID %s", run_id)
 
         checkpoint_path, run = load_run(run_id=run_id)
-
-        # only use run info if single id
-        pass_run = run if len(run_ids) == 1 else None
-        setup_wandb(run)
-
         model, datamodule, dataloaders = load_model_and_data(checkpoint_path)
 
         device = oodd.utils.get_device() if args.device == "auto" else torch.device(args.device)
