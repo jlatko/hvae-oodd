@@ -19,6 +19,7 @@ import oodd.evaluators
 import oodd.models
 import oodd.losses
 import oodd.utils
+from oodd.datasets import DataModule
 from oodd.utils import reduce_to_batch
 import wandb
 
@@ -35,6 +36,7 @@ parser.add_argument("--iw_samples_Lk", type=int, default=1, help="importances sa
 parser.add_argument("--n_eval_examples", type=int, default=float("inf"), help="cap on the number of examples to use")
 parser.add_argument("--batch_size", type=int, default=500, help="batch size for evaluation")
 parser.add_argument("--device", type=str, default="auto", help="device to evaluate on")
+parser.add_argument("--use_test", action="store_true")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
 
 args = parser.parse_args()
@@ -175,12 +177,26 @@ def print_stats(llr, l, lk):
     print(s)
 
 
-def load_model_and_data(checkpoint_path):
+def load_model_and_data(run_id):
+    checkpoint_path, run = load_run(run_id=run_id)
+
     # Define checkpoints and load model
     print("LOADING checkpoint from: ", checkpoint_path)
     checkpoint = oodd.models.Checkpoint(path=checkpoint_path)
     checkpoint.load()
-    datamodule = checkpoint.datamodule
+
+    if args.use_test:
+        datasets = run.config['val_datasets'].copy()
+        for k in datasets.keys():
+            datasets[k]['split'] = "test"
+
+        datamodule = DataModule(
+            train_datasets=[],
+            val_datasets=[],
+            test_datasets=datasets,
+        )
+    else:
+        datamodule = checkpoint.datamodule
     model = checkpoint.model
     model.eval()
     rich.print(datamodule)
@@ -189,8 +205,11 @@ def load_model_and_data(checkpoint_path):
     datamodule.batch_size = args.batch_size
     datamodule.test_batch_size = args.batch_size
     LOGGER.info("%s", datamodule)
-    dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
-    dataloaders |= {(k + " test", v) for k, v in datamodule.test_loaders.items()}
+
+    if args.use_test:
+        dataloaders = {(k + " test", v) for k, v in datamodule.test_loaders.items()}
+    else:
+        dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
     return model, datamodule, dataloaders
 
 
@@ -245,25 +264,15 @@ if __name__ == "__main__":
     for run_id in run_ids:
         LOGGER.info("RUN ID %s", run_id)
 
-        checkpoint_path, run = load_run(run_id=run_id)
-        model, datamodule, dataloaders = load_model_and_data(checkpoint_path)
+        model, datamodule, dataloaders = load_model_and_data(run_id)
 
         device = oodd.utils.get_device() if args.device == "auto" else torch.device(args.device)
         LOGGER.info("Device %s", device)
-
 
         # Add additional datasets to evaluation
         TRAIN_DATASET_KEY = list(datamodule.train_datasets.keys())[0]
 
         LOGGER.info("Train dataset %s", TRAIN_DATASET_KEY)
-
-        MAIN_DATASET_NAME = list(datamodule.train_datasets.keys())[0].strip("Binarized").strip("Quantized").strip(
-            "Dequantized")
-        LOGGER.info("Main dataset %s", MAIN_DATASET_NAME)
-
-        IN_DIST_DATASET = MAIN_DATASET_NAME + " test"
-        TRAIN_DATASET = MAIN_DATASET_NAME + " train"
-        LOGGER.info("Main in-distribution dataset %s", IN_DIST_DATASET)
 
         n_test_batches = get_lengths(datamodule.val_datasets) + get_lengths(datamodule.test_datasets)
         N_EQUAL_EXAMPLES_CAP = min(n_test_batches)
@@ -276,7 +285,7 @@ if __name__ == "__main__":
 
         with torch.no_grad():
             for dataset, dataloader in dataloaders:
-                dataset = dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
+                # dataset = dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
                 print(f"Evaluating {dataset}")
 
                 n = 0
@@ -335,7 +344,6 @@ if __name__ == "__main__":
                         LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP=}")
                         break
 
-        # pickle.save(get_save_path(f"all-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt")
     torch.save({
         in_dataset: {
             dataset: {
@@ -347,14 +355,3 @@ if __name__ == "__main__":
             } for dataset, d2 in d1.items()
         } for in_dataset, d1 in all_scores.items()
     }, get_save_path("all-scores.pt"))
-
-        # # save scores
-        # torch.save(scores, get_save_path(f"values-scores-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save(elbos, get_save_path(f"values-elbos-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save(elbos_k, get_save_path(f"values-elbos_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save(likelihoods, get_save_path(f"values-likelihoods-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save(likelihoods_k, get_save_path(f"values-likelihoods_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save({f"{dataset}|{k}": v for dataset, d in stats.items() for k, v in d.items() }, get_save_path(f"values-stats-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save({f"{dataset}|{k}": v for dataset, d in stats_k.items() for k, v in d.items() }, get_save_path(f"values-stats_k-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_sub.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_sub-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))
-        # torch.save({f"{dataset}|{k}": v for dataset, d in stats_scores_div.items() for k, v in d.items() }, get_save_path(f"values-stat_scores_div-{IN_DIST_DATASET}-{FILE_NAME_SETTINGS_SPEC}.pt"))

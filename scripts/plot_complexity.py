@@ -150,16 +150,16 @@ if __name__ == "__main__":
     )
     print(list(complexities.keys()))
     for reference_dataset in reference_datasets:
-        reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
+        # reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
         test_datasets = sorted(list(data[reference_dataset].keys()))
 
         # check if ok
-        reference_dataset_key = [test_dataset for test_dataset in test_datasets if test_dataset.split()[0] == reference_dataset_stripped]
+        reference_dataset_key = [test_dataset for test_dataset in test_datasets if test_dataset.split()[0] == reference_dataset]
         if len(reference_dataset_key) == 0:
-            print(f"ERROR: {reference_dataset_stripped} not in {test_datasets}")
+            print(f"ERROR: {reference_dataset} not in {test_datasets}")
             continue
         if len(reference_dataset_key) > 1:
-            print(f"WARNING: {reference_dataset_stripped} appears more then once in: {test_datasets}")
+            print(f"WARNING: {reference_dataset} appears more then once in: {test_datasets}")
 
         reference_dataset_key = reference_dataset_key[0]
 
