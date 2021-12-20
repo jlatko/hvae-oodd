@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--dataset_name", type=str, default="FashionMNISTBinarized", help="model")
 parser.add_argument("--complexity", type=str, default="mean_local_entropy", help="complexity metric")
 parser.add_argument("--complexity_param", type=int, default=3, help="locality radius or compression mode")
-parser.add_argument("--n_eval_examples", type=int, default=float("inf"), help="cap on the number of examples to use")
+parser.add_argument("--n_eval_examples", type=int, default=10000, help="cap on the number of examples to use")
 parser.add_argument("--save_dir", type=str, default="/scratch/s193223/oodd", help="directory to store scores in")
 parser.add_argument("--use_test", action="store_true")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     assert N_EQUAL_EXAMPLES_CAP % 1 == 0, "Batch size must divide smallest dataset size"
 
 
-    N_EQUAL_EXAMPLES_CAP = min([args.n_eval_examples, N_EQUAL_EXAMPLES_CAP])
+    N_EQUAL_EXAMPLES_CAP = args.n_eval_examples
     LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
 
     if args.use_test:
@@ -138,7 +138,7 @@ if __name__ == "__main__":
         print(f"Evaluating {dataset}")
 
         n = 0
-        for b, (x, _) in tqdm(enumerate(dataloader), total=N_EQUAL_EXAMPLES_CAP / 1):
+        for b, (x, _) in tqdm(enumerate(dataloader)):
             for xi in x:
                 n += 1
                 complexities[dataset].append(complexity_metric(xi, args.complexity_param))
