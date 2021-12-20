@@ -149,4 +149,4 @@ if __name__ == "__main__":
         print(f"mean {args.complexity}({args.complexity_param}): ", np.mean(complexities[dataset]))
         print(f"std {args.complexity}({args.complexity_param}): ", np.std(complexities[dataset]))
 
-    torch.save(complexities, get_save_path(f"complexity_{ args.complexity}_{args.complexity_param}.pt"))
+    torch.save(complexities, get_save_path(f"complexity.pt"))
