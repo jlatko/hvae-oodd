@@ -123,9 +123,14 @@ def plot_compression(datasets, complexities, scores, title):
     colors = "rgbcmyk"
 
     for l, dataset in enumerate(datasets):
+        print(title, dataset, len(scores[dataset]), len(complexities[dataset]))
         c = colors[l]
+
         comps = complexities[dataset][:10000]
         values = scores[dataset][:10000]
+        if len(comps) != len(values):
+            print(f"WARNING: {len(comps)} != {len(values)} (comp vs scores) in {dataset} ({title})")
+            continue
 
         r = pearsonr(values, comps)
         print(reference_dataset, dataset, r)
@@ -134,7 +139,7 @@ def plot_compression(datasets, complexities, scores, title):
         z = np.polyfit(comps, values, 1)
         p = np.poly1d(z)
         plt.plot(comps, p(comps), label=dataset.split()[0], color=c)
-        plt.legend()
+    plt.legend()
 
 
 if __name__ == "__main__":
