@@ -29,6 +29,7 @@ LOGGER = logging.getLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--run_ids", type=str, help="wandb run id or a list")
+parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
 parser.add_argument("--iw_samples_elbo", type=int, default=1, help="importances samples for regular ELBO")
 parser.add_argument("--iw_samples_Lk", type=int, default=1, help="importances samples for L>k bound")
 parser.add_argument("--n_eval_examples", type=int, default=float("inf"), help="cap on the number of examples to use")
@@ -57,13 +58,9 @@ def setup_wandb(run=None):
     wandb.config.update(args)
 
     # wandb configuration
-    if run is not None:
-        run_name = run.name
-        wandb.config.update({
-            "train_dataset": run.config['train_dataset'],
-            "val_datasets": run.config['val_datasets'],
-            "seed": run.config['seed'],
-        })
+
+    if args.run_name is not None:
+        run_name = args.run_name
     else:
         run_name = "multiple"
 

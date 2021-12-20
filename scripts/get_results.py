@@ -16,6 +16,7 @@ LOGGER = logging.getLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--run_id", type=str, help="wandb run id")
+parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
 
 args = parser.parse_args()
@@ -41,7 +42,18 @@ def setup_wandb(run_id):
     args.save_dir = wandb.run.dir
     wandb.config.update(args)
 
-    run_name = "RESULTS_" + run.name.split("-")[-1] + "-" + wandb.run.name.split("-")[-1]
+    if args.run_name is not None:
+        run_name = args.run_name
+    elif run.name.split("-")[0] != "STATS_multiple":
+        run_name = "_".join(
+            "-".join(
+                run.name.split("-")[:-1]
+            ).split("_")[1:]
+        )
+    else:
+        run_name = str(run.name.split("-")[-1])
+
+    run_name = "RESULTS_" + run_name + "-" + wandb.run.name.split("-")[-1]
     wandb.run.name = run_name
     wandb.run.save()
 

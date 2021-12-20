@@ -103,7 +103,15 @@ class DataModule:
         self.add_datasets(train_datasets, val_datasets, test_datasets)
 
         # Define primary validation dataset
-        self.primary_val_name = list(val_datasets.keys())[0]
+        train_dataset_name = list(train_datasets.keys())[0]
+        self.primary_val_name = None
+        for dataset_name in self.val_datasets.keys():
+            if dataset_name == train_dataset_name:
+                self.primary_val_name = dataset_name
+
+        if self.primary_val_name is None:
+            self.primary_val_name = list(val_datasets.keys())[0]
+
         self.primary_val_dataset = self.val_datasets[self.primary_val_name]
         self.primary_val_loader = self.val_loaders[self.primary_val_name]
 
