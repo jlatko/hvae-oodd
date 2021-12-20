@@ -64,8 +64,7 @@ if __name__ == "__main__":
     setup_wandb(args.run_id)
     data = load_data(args.run_id)
 
-    # results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(defaultdict)))))
-    results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(defaultdict))))
+    results = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(defaultdict)))))
     reference_datasets = sorted(
         list(data.keys()),
         key=lambda x: ("a" if "Binarized" in x else "b") + x.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
@@ -96,63 +95,63 @@ if __name__ == "__main__":
             k_values = sorted(list(data[reference_dataset][test_dataset].keys()))
             for k in k_values:
 
-                score_names = sorted(list(data[reference_dataset][test_dataset][k].keys()))
+                run_ids = sorted(list(data[reference_dataset][test_dataset][k].keys()))
+                for i, run_id in run_ids:
+                    s = f"({run_id}) {k} | "
+                    score_names = sorted(list(data[reference_dataset][test_dataset][k][run_id].keys()))
+                    for score_name in score_names:
+                        reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][score_name])
+                        test_scores = np.array(data[reference_dataset][test_dataset][k][score_name])
+                        any_nan = False
 
-                s = f"{k} | "
+                        if np.any(np.isnan(reference_scores)):
+                            if score_name in SCORES_TO_SHOW:
+                                print(f"WARNING: nan in reference {score_name}")
+                            reference_scores = np.nan_to_num(reference_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
+                            any_nan = True
+                        if np.any(np.isnan(test_scores)):
+                            if score_name in SCORES_TO_SHOW:
+                                print(f"WARNING: nan in test {score_name}")
+                            test_scores = np.nan_to_num(test_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
+                            any_nan = True
 
-                for score_name in score_names:
-                    reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][score_name])
-                    test_scores = np.array(data[reference_dataset][test_dataset][k][score_name])
-                    any_nan = False
+                        if score_name in SCORES_TO_NEGATE:
+                            reference_scores = -reference_scores
+                            test_scores = -test_scores
 
-                    if np.any(np.isnan(reference_scores)):
+                        # compute metrics
+                        y_true = np.array([*[0] * len(reference_scores), *[1] * len(test_scores)])
+                        y_score = np.concatenate([reference_scores, test_scores])
+
+                        (
+                            (roc_auc, fpr, tpr, thresholds),
+                            (pr_auc, precision, recall, thresholds),
+                            fpr80,
+                        ) = compute_roc_pr_metrics(y_true=y_true, y_score=y_score, reference_class=0)
+
+                        results[reference_dataset][test_dataset][k][score_name] = dict(
+                            roc=dict(roc_auc=roc_auc, fpr=fpr, tpr=tpr, thresholds=thresholds),
+                            pr=dict(pr_auc=pr_auc, precision=precision, recall=recall, thresholds=thresholds),
+                            fpr80=fpr80,
+                        )
+
+                        ALL_RESULTS.append({
+                            "reference_dataset": reference_dataset,
+                            "dataset": test_dataset,
+                            "score_name": score_name,
+                            "k": k,
+                            # "iw_elbo": iw_elbo, ??
+                            # "iw_elbo_k": iw_elbo_k, ??
+                            "AUROC": roc_auc,
+                            "AUPRC": pr_auc,
+                            "FPR80": fpr80,
+                            "stat": score_name,
+                            "nan": any_nan
+                        })
+
                         if score_name in SCORES_TO_SHOW:
-                            print(f"WARNING: nan in reference {score_name}")
-                        reference_scores = np.nan_to_num(reference_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
-                        any_nan = True
-                    if np.any(np.isnan(test_scores)):
-                        if score_name in SCORES_TO_SHOW:
-                            print(f"WARNING: nan in test {score_name}")
-                        test_scores = np.nan_to_num(test_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
-                        any_nan = True
-
-                    if score_name in SCORES_TO_NEGATE:
-                        reference_scores = -reference_scores
-                        test_scores = -test_scores
-
-                    # compute metrics
-                    y_true = np.array([*[0] * len(reference_scores), *[1] * len(test_scores)])
-                    y_score = np.concatenate([reference_scores, test_scores])
-
-                    (
-                        (roc_auc, fpr, tpr, thresholds),
-                        (pr_auc, precision, recall, thresholds),
-                        fpr80,
-                    ) = compute_roc_pr_metrics(y_true=y_true, y_score=y_score, reference_class=0)
-
-                    results[reference_dataset][test_dataset][k][score_name] = dict(
-                        roc=dict(roc_auc=roc_auc, fpr=fpr, tpr=tpr, thresholds=thresholds),
-                        pr=dict(pr_auc=pr_auc, precision=precision, recall=recall, thresholds=thresholds),
-                        fpr80=fpr80,
-                    )
-
-                    ALL_RESULTS.append({
-                        "reference_dataset": reference_dataset,
-                        "dataset": test_dataset,
-                        "score_name": score_name,
-                        "k": k,
-                        # "iw_elbo": iw_elbo, ??
-                        # "iw_elbo_k": iw_elbo_k, ??
-                        "AUROC": roc_auc,
-                        "AUPRC": pr_auc,
-                        "FPR80": fpr80,
-                        "stat": score_name,
-                        "nan": any_nan
-                    })
-
-                    if score_name in SCORES_TO_SHOW:
-                        s += f"{score_name:10s}: {roc_auc:.3f} | "
-                print(s)
+                            s += f"{score_name:10s}: {roc_auc:.3f} | "
+                    print(s)
         print("")
 
     results_df = pd.DataFrame(ALL_RESULTS)
