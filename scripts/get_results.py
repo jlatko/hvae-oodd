@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 from collections import defaultdict
 import numpy as np
 import pandas as pd
@@ -43,6 +44,8 @@ def setup_wandb(run_id):
     run_name = "RESULTS_" + run.name.split("-")[-1] + "-" + wandb.run.name.split("-")[-1]
     wandb.run.name = run_name
     wandb.run.save()
+
+    wandb.save("*.csv")
 
 if __name__ == "__main__":
     ALL_RESULTS = []
@@ -141,7 +144,4 @@ if __name__ == "__main__":
         print("")
 
     results_df = pd.DataFrame(ALL_RESULTS)
-    results_df.to_csv("results.csv", index=False)
-        # print(s)
-        # f = f"results-{score_name}-{reference_dataset}.txt"
-        # write_text_file(get_save_path(f), s)
+    results_df.to_csv(os.path.join(wandb.run.dir, "results.csv"), index=False)
