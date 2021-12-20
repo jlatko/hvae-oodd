@@ -139,11 +139,13 @@ if __name__ == "__main__":
 
         n = 0
         for b, (x, _) in tqdm(enumerate(dataloader), total=N_EQUAL_EXAMPLES_CAP / 1):
-            n += x.shape[0]
+            for xi in x:
+                n += 1
+                complexities[dataset].append(complexity_metric(xi, args.complexity_param))
 
-            x = x[0]
-
-            complexities[dataset].append(complexity_metric(x, args.complexity_param))
+                if n >= N_EQUAL_EXAMPLES_CAP:
+                    LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP}")
+                    break
 
             if n >= N_EQUAL_EXAMPLES_CAP:
                 LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP}")
