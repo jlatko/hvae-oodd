@@ -63,6 +63,56 @@ def setup_wandb():
 
     # wandb.save("*.csv")
 
+
+# def plot_compression(comp="complexity_mean_local_entropy_3",
+#                      k=0, key="elbos_k", data=elbo_k, size=4, logscale_y=False, neg=False, logscale_x=False):
+#     colors = "rgbcmyk"
+#     dataset_pairs = [
+#         ('CIFAR10 test', 'SVHN test'),
+#         ('FashionMNIST test', 'MNIST test'),
+#     ]
+#     fig, axes = plt.subplots(nrows=2, ncols=2, sharex=True, figsize=(4 * size, 2 * size), facecolor="w")
+#     for i, datasets in enumerate(dataset_pairs):
+#         for j, reference_dataset in enumerate(datasets):
+#             ax = axes[j][i]
+#             for l, target_dataset in enumerate(dataset_groups[reference_dataset]):
+#                 c = colors[2 * i + l]
+#                 print(reference_dataset, target_dataset)
+#                 print(len(data[reference_dataset][target_dataset][key][k][1][1]))
+#                 print(len(complexities[comp][target_dataset]))
+#                 values = data[reference_dataset][target_dataset][key][k][1][1][:10000]
+#                 if neg:
+#                     values = -values
+#                 if logscale_y:
+#                     values = np.log(values)
+#                 comps = complexities[comp][target_dataset][:10000]
+#                 r = pearsonr(values, comps)
+#                 print(reference_dataset, target_dataset, r)
+#
+#                 if logscale_x:
+#                     comps = np.log(comps)
+#
+#                 ax.scatter(comps, values, alpha=0.01, color=c)
+#                 z = np.polyfit(comps, values, 1)
+#                 p = np.poly1d(z)
+#                 ax.plot(comps, p(comps), label=target_dataset.split()[0], color=c)
+#
+#             ax.legend()
+#             ylabel = f"{key} ({reference_dataset.split()[0]} model)"
+#
+#             if neg:
+#                 ylabel = "neg " + ylabel
+#             if logscale_y:
+#                 ylabel = "log  " + ylabel
+#
+#             ax.set_ylabel(ylabel)
+#
+#     xlabel = comp
+#     if logscale_x:
+#         xlabel = "log  " + xlabel
+#     plt.xlabel(xlabel)
+#     plt.subplots_adjust(hspace=.0)
+
 if __name__ == "__main__":
     ALL_RESULTS = []
     setup_wandb()
