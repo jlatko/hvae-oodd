@@ -30,18 +30,20 @@ SCORES_TO_SHOW = ["LLR", "ELBO", "LIKELIHOOD", "KL", "p_var_1", "p_var_sum"]
 
 def load_data():
     path = download_or_find(args.scores_run_id, "all-scores.pt")
+    print("loading: ", path)
     data = torch.load(path)
     return data
 
 def load_complexities():
     path = download_or_find(args.complexities_run_id, "complexity.pt")
+    print("loading: ", path)
     data = torch.load(path)
     return data
 
 def setup_wandb():
     # api = wandb.Api()
     # run = api.run(f"johnnysummer/hvae/{run_id}")
-
+    # TODO add tags/meta from both
     tags = ["scatter"]
 
     wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
@@ -146,6 +148,7 @@ if __name__ == "__main__":
         list(data.keys()),
         key=lambda x: ("a" if "Binarized" in x else "b") + x.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
     )
+    print(list(complexities.keys()))
     for reference_dataset in reference_datasets:
         reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
         test_datasets = sorted(list(data[reference_dataset].keys()))
