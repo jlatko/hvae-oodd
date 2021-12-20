@@ -30,6 +30,7 @@ parser.add_argument("--complexity", type=str, default="mean_local_entropy", help
 parser.add_argument("--complexity_param", type=int, default=3, help="locality radius or compression mode")
 parser.add_argument("--n_eval_examples", type=int, default=float("inf"), help="cap on the number of examples to use")
 parser.add_argument("--save_dir", type=str, default="/scratch/s193223/oodd", help="directory to store scores in")
+parser.add_argument("--split", type=str, default="test", help="test or val")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args = parser.parse_args()
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     N_EQUAL_EXAMPLES_CAP = min([args.n_eval_examples, N_EQUAL_EXAMPLES_CAP])
     LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
 
-    dataloaders = {(k + " test", v) for k, v in datamodule.val_loaders.items()}
+    dataloaders = {(k + f" {args.split}", v) for k, v in datamodule.val_loaders.items()}
 
     complexities = defaultdict(list)
 
