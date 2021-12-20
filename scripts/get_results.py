@@ -85,7 +85,8 @@ if __name__ == "__main__":
         reference_dataset_key = reference_dataset_key[0]
 
         # print(f"========== {reference_dataset} (in-distribution) ==========\n")
-
+        all_scores = defaultdict(lambda: defaultdict(list))
+        ref_scores = defaultdict(dict)
         for test_dataset in test_datasets:
             if test_dataset.split()[0] == reference_dataset_stripped:
                 continue
@@ -119,6 +120,9 @@ if __name__ == "__main__":
                             reference_scores = -reference_scores
                             test_scores = -test_scores
 
+                        all_scores[k][score_name].append(test_scores)
+                        ref_scores[k][score_name] = reference_scores
+
                         # compute metrics
                         y_true = np.array([*[0] * len(reference_scores), *[1] * len(test_scores)])
                         y_score = np.concatenate([reference_scores, test_scores])
@@ -151,7 +155,47 @@ if __name__ == "__main__":
 
                         if score_name in SCORES_TO_SHOW:
                             s += f"{score_name:10s}: {roc_auc:.3f} | "
+
                     print(s)
+
+        # ALL SCORES
+        k_values = sorted(list(ref_scores.keys()))
+        print(f"--- {reference_dataset}  vs ALL ---")
+        for k in k_values:
+            score_names = sorted(list(ref_scores[k].keys()))
+            s = f"{k} | "
+            for score_name in score_names:
+                reference_scores = ref_scores[k][score_name]
+                test_scores = np.concatenate(all_scores[k][score_name])
+
+                # compute metrics
+                y_true = np.array([*[0] * len(reference_scores), *[1] * len(test_scores)])
+                y_score = np.concatenate([reference_scores, test_scores])
+
+                (
+                    (roc_auc, fpr, tpr, thresholds),
+                    (pr_auc, precision, recall, thresholds),
+                    fpr80,
+                ) = compute_roc_pr_metrics(y_true=y_true, y_score=y_score, reference_class=0)
+
+                ALL_RESULTS.append({
+                    "reference_dataset": reference_dataset,
+                    "dataset": "all",
+                    "score_name": score_name,
+                    "k": k,
+                    # "iw_elbo": iw_elbo, ??
+                    # "iw_elbo_k": iw_elbo_k, ??
+                    "AUROC": roc_auc,
+                    "AUPRC": pr_auc,
+                    "FPR80": fpr80,
+                    "stat": score_name,
+                })
+
+                if score_name in SCORES_TO_SHOW:
+                    s += f"{score_name:10s}: {roc_auc:.3f} | "
+
+            print(s)
+
         print("")
 
     results_df = pd.DataFrame(ALL_RESULTS)
