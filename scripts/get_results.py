@@ -96,7 +96,7 @@ if __name__ == "__main__":
             for k in k_values:
 
                 run_ids = sorted(list(data[reference_dataset][test_dataset][k].keys()))
-                for i, run_id in run_ids:
+                for run_id in run_ids:
                     s = f"({run_id}) {k} | "
                     score_names = sorted(list(data[reference_dataset][test_dataset][k][run_id].keys()))
                     for score_name in score_names:

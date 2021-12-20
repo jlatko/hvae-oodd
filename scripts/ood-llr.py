@@ -177,6 +177,7 @@ def print_stats(llr, l, lk):
 
 def load_model_and_data(checkpoint_path):
     # Define checkpoints and load model
+    print("LOADING checkpoint from: ", checkpoint_path)
     checkpoint = oodd.models.Checkpoint(path=checkpoint_path)
     checkpoint.load()
     datamodule = checkpoint.datamodule
