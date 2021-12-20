@@ -8,9 +8,11 @@ import pandas as pd
 import rich
 import torch
 import wandb
+from scipy.stats import pearsonr
 
 from oodd.utils.oodd import compute_roc_pr_metrics
 from oodd.utils.wandb import download_or_find
+import matplotlib.pyplot as plt
 
 LOGGER = logging.getLogger()
 
@@ -63,7 +65,7 @@ def setup_wandb():
 
     # wandb.save("*.csv")
 
-
+#
 # def plot_compression(comp="complexity_mean_local_entropy_3",
 #                      k=0, key="elbos_k", data=elbo_k, size=4, logscale_y=False, neg=False, logscale_x=False):
 #     colors = "rgbcmyk"
@@ -113,6 +115,26 @@ def setup_wandb():
 #     plt.xlabel(xlabel)
 #     plt.subplots_adjust(hspace=.0)
 
+def plot_compression(datasets, complexities, scores, title):
+    plt.figure(figsize=(10,10))
+    plt.title(title)
+    colors = "rgbcmyk"
+
+    for l, dataset in enumerate(datasets):
+        c = colors[l]
+        comps = complexities[dataset][:10000]
+        values = scores[dataset][:10000]
+
+        r = pearsonr(values, comps)
+        print(reference_dataset, dataset, r)
+
+        plt.scatter(comps, values, alpha=0.01, color=c)
+        z = np.polyfit(comps, values, 1)
+        p = np.poly1d(z)
+        plt.plot(comps, p(comps), label=dataset.split()[0], color=c)
+        plt.legend()
+
+
 if __name__ == "__main__":
     ALL_RESULTS = []
     setup_wandb()
@@ -139,14 +161,11 @@ if __name__ == "__main__":
         reference_dataset_key = reference_dataset_key[0]
 
         # print(f"========== {reference_dataset} (in-distribution) ==========\n")
-        all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        all_complexities = []
+        all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list))))
         for test_dataset in test_datasets:
             if test_dataset not in complexities:
                 print(f"WARNING: {test_dataset} not in complexities")
                 continue
-
-            all_complexities.append(complexities[test_dataset])
 
             k_values = sorted(list(data[reference_dataset][test_dataset].keys()))
             for k in k_values:
@@ -164,6 +183,29 @@ if __name__ == "__main__":
                                 test_scores = np.nan_to_num(test_scores, copy=True, nan=0.0, posinf=1e10, neginf=-1e10)
                                 any_nan = True
 
-                            all_scores[k][run_id][score_name].append(test_scores)
+                            all_scores[k][run_id][score_name][test_dataset] = test_scores
+
+        # plot
+        k_values = sorted(list(all_scores.keys()))
+        for k in k_values:
+            run_ids = sorted(list(all_scores[k].keys()))
+            for run_id in run_ids:
+                score_names = sorted(list(all_scores[k][run_id].keys()))
+                for score_name in score_names:
+                    test_datasets = sorted(list(all_scores[k][run_id][score_name].keys()))
+
+                    plot_compression(test_datasets,
+                                     complexities=complexities,
+                                     scores=all_scores[k][run_id][score_name],
+                                     title=f"{k} {score_name}")
+                    name = f"{reference_dataset} ({run_id}) {k} {score_name}"
+                    wandb.log({name: plt})
+                    # plt.savefig()
+
+
+
+
+
+
 
 
