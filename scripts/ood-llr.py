@@ -329,8 +329,8 @@ if __name__ == "__main__":
                         KL_RATIO = sample_kls - sample_kls_k
 
                         all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR'].extend(LLR.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LLR.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(LLR.tolist())
+                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LIKELIHOOD_RATIO.tolist())
+                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(KL_RATIO.tolist())
 
                         # also for other stats?
                         sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
