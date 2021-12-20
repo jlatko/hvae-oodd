@@ -100,8 +100,8 @@ if __name__ == "__main__":
                     s = f"({run_id}) {k} | "
                     score_names = sorted(list(data[reference_dataset][test_dataset][k][run_id].keys()))
                     for score_name in score_names:
-                        reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][score_name])
-                        test_scores = np.array(data[reference_dataset][test_dataset][k][score_name])
+                        reference_scores = np.array(data[reference_dataset][reference_dataset_key][k][run_id][score_name])
+                        test_scores = np.array(data[reference_dataset][test_dataset][k][run_id][score_name])
                         any_nan = False
 
                         if np.any(np.isnan(reference_scores)):
@@ -129,7 +129,7 @@ if __name__ == "__main__":
                             fpr80,
                         ) = compute_roc_pr_metrics(y_true=y_true, y_score=y_score, reference_class=0)
 
-                        results[reference_dataset][test_dataset][k][score_name] = dict(
+                        results[reference_dataset][test_dataset][k][run_id][score_name] = dict(
                             roc=dict(roc_auc=roc_auc, fpr=fpr, tpr=tpr, thresholds=thresholds),
                             pr=dict(pr_auc=pr_auc, precision=precision, recall=recall, thresholds=thresholds),
                             fpr80=fpr80,
