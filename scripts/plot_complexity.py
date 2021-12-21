@@ -118,7 +118,7 @@ def setup_wandb():
 #     plt.subplots_adjust(hspace=.0)
 
 def plot_compression(datasets, complexities, scores, title):
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(7,7))
     plt.title(title)
     colors = "rgbcmyk"
 
@@ -202,12 +202,18 @@ if __name__ == "__main__":
                 for score_name in score_names:
                     test_datasets = sorted(list(all_scores[k][run_id][score_name].keys()))
 
-                    plot_compression(test_datasets,
-                                     complexities=complexities,
-                                     scores=all_scores[k][run_id][score_name],
-                                     title=f"{k} {score_name}")
-                    name = f"{reference_dataset} ({run_id}) {k} {score_name}"
-                    wandb.log({name: plt})
+                    try:
+                        plot_compression(test_datasets,
+                                         complexities=complexities,
+                                         scores=all_scores[k][run_id][score_name],
+                                         title=f"{k} {score_name}")
+                        name = f"{reference_dataset} ({run_id}) {k} {score_name}"
+                        wandb.log({name + "img": wandb.Image(plt)})
+                        wandb.log({name: plt})
+                    except Exception as e:
+                        print("Caught exception for:", reference_dataset, run_id, k, score_name)
+                        print(e)
+
                     # plt.savefig()
 
 
