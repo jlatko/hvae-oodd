@@ -275,11 +275,7 @@ if __name__ == "__main__":
         LOGGER.info("Train dataset %s", TRAIN_DATASET_KEY)
 
         n_test_batches = get_lengths(datamodule.val_datasets) + get_lengths(datamodule.test_datasets)
-        N_EQUAL_EXAMPLES_CAP = min(n_test_batches)
-        assert N_EQUAL_EXAMPLES_CAP % args.batch_size == 0, "Batch size must divide smallest dataset size"
-
-        N_EQUAL_EXAMPLES_CAP = min([args.n_eval_examples, N_EQUAL_EXAMPLES_CAP])
-        LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
+        N_EQUAL_EXAMPLES_CAP = args.n_eval_examples
 
         criterion = oodd.losses.ELBO()
 

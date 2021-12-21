@@ -117,9 +117,6 @@ if __name__ == "__main__":
     )
 
     n_test_batches = get_lengths(datamodule.val_datasets) + get_lengths(datamodule.test_datasets)
-    N_EQUAL_EXAMPLES_CAP = min(n_test_batches)
-    assert N_EQUAL_EXAMPLES_CAP % 1 == 0, "Batch size must divide smallest dataset size"
-
 
     N_EQUAL_EXAMPLES_CAP = args.n_eval_examples
     LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
