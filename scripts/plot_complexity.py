@@ -65,7 +65,7 @@ def setup_wandb():
     # wandb.run.name = run_name
     wandb.run.save()
 
-    # wandb.save("*.csv")
+    wandb.save("*.png")
 
 #
 # def plot_compression(comp="complexity_mean_local_entropy_3",
@@ -118,7 +118,7 @@ def setup_wandb():
 #     plt.subplots_adjust(hspace=.0)
 
 def plot_compression(datasets, complexities, scores, title):
-    plt.figure(figsize=(7,7))
+    fig = plt.figure(figsize=(7,7))
     plt.title(title)
     colors = "rgbcmyk"
 
@@ -140,6 +140,8 @@ def plot_compression(datasets, complexities, scores, title):
         p = np.poly1d(z)
         plt.plot(comps, p(comps), label=dataset.split()[0], color=c)
     plt.legend()
+
+    return fig
 
 
 if __name__ == "__main__":
@@ -203,15 +205,15 @@ if __name__ == "__main__":
                     test_datasets = sorted(list(all_scores[k][run_id][score_name].keys()))
 
                     try:
-                        plot_compression(test_datasets,
+                        fig = plot_compression(test_datasets,
                                          complexities=complexities,
                                          scores=all_scores[k][run_id][score_name],
                                          title=f"{k} {score_name}")
                         name = f"{reference_dataset} ({run_id}) {k} {score_name}"
                         wandb.log({name + "img": wandb.Image(plt)})
 
-                        plt.savefig(os.path.join(wandb.run.dir, f"{reference_dataset}_{run_id}_{k}_{score_name}"))
-                        # wandb.log({name: plt})
+                        plt.savefig(os.path.join(wandb.run.dir, f"{reference_dataset}_{run_id}_{k}_{score_name}.png"))
+                        wandb.log({name: fig})
                     except Exception as e:
                         print("Caught exception for:", reference_dataset, run_id, k, score_name)
                         print(e)
