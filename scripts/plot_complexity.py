@@ -209,6 +209,8 @@ if __name__ == "__main__":
                                          title=f"{k} {score_name}")
                         name = f"{reference_dataset} ({run_id}) {k} {score_name}"
                         wandb.log({name + "img": wandb.Image(plt)})
+
+                        plt.savefig(os.path.join(wandb.run.dir, f"{reference_dataset}_{run_id}_{k}_{score_name}"))
                         # wandb.log({name: plt})
                     except Exception as e:
                         print("Caught exception for:", reference_dataset, run_id, k, score_name)
