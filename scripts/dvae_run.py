@@ -42,7 +42,7 @@ parser.add_argument("--free_nats_epochs", type=int, default=400, help="epochs to
 parser.add_argument("--free_nats", type=float, default=2, help="nats considered free in the KL term")
 parser.add_argument("--n_eval_samples", type=int, default=32, help="samples from prior for quality inspection")
 parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed")
-parser.add_argument("--test_every", type=int, default=50, help="epochs between evaluations")
+parser.add_argument("--test_every", type=int, default=20, help="epochs between evaluations")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving models")
 parser.add_argument("--tqdm", action= "store_true", help="whether to display progressbar")
 parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
@@ -123,7 +123,7 @@ def train(epoch):
     # log time
     time_passed = time.time() - s
     print(f"Took: {time_passed:.2f} seconds")
-    wandb.log({"training time": time_passed}, step=epoch * len(datamodule.train_loader))
+    wandb.log({"training time": time_passed, "epoch": epoch}, step=epoch * len(datamodule.train_loader))
 
     evaluator.update(
         "Train", "hyperparameters", {"free_nats": [free_nats], "beta": [beta], "learning_rate": [args.learning_rate]}
