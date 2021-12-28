@@ -149,3 +149,5 @@ pytest
 
 # pycharm
 .idea
+
+notebooks

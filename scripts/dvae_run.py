@@ -42,9 +42,11 @@ parser.add_argument("--free_nats_epochs", type=int, default=400, help="epochs to
 parser.add_argument("--free_nats", type=float, default=2, help="nats considered free in the KL term")
 parser.add_argument("--n_eval_samples", type=int, default=32, help="samples from prior for quality inspection")
 parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed")
-parser.add_argument("--test_every", type=int, default=10, help="epochs between evaluations")
+parser.add_argument("--test_every", type=int, default=20, help="epochs between evaluations")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving models")
 parser.add_argument("--tqdm", action= "store_true", help="whether to display progressbar")
+parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
+parser.add_argument("--test_verbosity", type=int, default=1, help="how much test values to log")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args, unknown_args = parser.parse_known_args()
@@ -63,7 +65,11 @@ def setup_wandb(train_dataset_name):
     args.save_dir = wandb.run.dir
 
     # wandb configuration
-    run_name = train_dataset_name + "-" + wandb.run.name.split("-")[-1]
+    run_name = ""
+    if args.run_name is not None:
+        run_name = "_" + args.run_name
+    if wandb.run.name is not None:
+        run_name = train_dataset_name + run_name + "-" + wandb.run.name.split("-")[-1]
     wandb.run.name = run_name
     wandb.config.update(args)
     wandb.config.update({"train_dataset": train_dataset_name})
@@ -117,7 +123,7 @@ def train(epoch):
     # log time
     time_passed = time.time() - s
     print(f"Took: {time_passed:.2f} seconds")
-    wandb.log({"training time": time_passed}, step=epoch * len(datamodule.train_loader))
+    wandb.log({"training time": time_passed, "epoch": epoch}, step=epoch * len(datamodule.train_loader))
 
     evaluator.update(
         "Train", "hyperparameters", {"free_nats": [free_nats], "beta": [beta], "learning_rate": [args.learning_rate]}
@@ -127,7 +133,7 @@ def train(epoch):
 
 
 @torch.no_grad()
-def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=float("inf")):
+def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=float("inf"), is_main=False):
     LOGGER.info(f"Testing: {dataset_name}")
     model.eval()
 
@@ -195,37 +201,41 @@ def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=fl
 
             if n_skipped_latents == 0:  # Regular ELBO
                 evaluator.update(dataset_name, "elbo", {"log p(x)": elbo})
+
+                if is_main or args.test_verbosity > 1:
+                    evaluator.update(
+                        dataset_name, "likelihoods", {"loss": -loss, "log p(x)": elbo, "log p(x|z)": likelihood}
+                    )
+                    klds = {
+                        f"KL z{i+1}": kl
+                        for i, kl in enumerate(
+                            [sd.loss.kl_samplewise for sd in stage_datas if sd.loss.kl_samplewise is not None]
+                        )
+                    }
+                    klds["KL(q(z|x), p(z))"] = kl_divergences
+                    evaluator.update(dataset_name, "divergences", klds)
+
+            evaluator.update(dataset_name, f"skip-elbo", {f"{n_skipped_latents} log p(x)": elbo})
+            evaluator.update(dataset_name, f"skip-elbo-{dataset_name}", {f"{n_skipped_latents} log p(x)": elbo})
+
+            if is_main or args.test_verbosity > 1:
                 evaluator.update(
-                    dataset_name, "likelihoods", {"loss": -loss, "log p(x)": elbo, "log p(x|z)": likelihood}
+                    dataset_name,
+                    f"skip-likelihoods-{dataset_name}",
+                    {
+                        f"{n_skipped_latents} loss": -loss,
+                        f"{n_skipped_latents} log p(x)": elbo,
+                        f"{n_skipped_latents} log p(x|z)": likelihood,
+                    },
                 )
                 klds = {
-                    f"KL z{i+1}": kl
+                    f"{n_skipped_latents} KL z{i+1}": kl
                     for i, kl in enumerate(
                         [sd.loss.kl_samplewise for sd in stage_datas if sd.loss.kl_samplewise is not None]
                     )
                 }
-                klds["KL(q(z|x), p(z))"] = kl_divergences
-                evaluator.update(dataset_name, "divergences", klds)
-
-            evaluator.update(dataset_name, f"skip-elbo", {f"{n_skipped_latents} log p(x)": elbo})
-            evaluator.update(dataset_name, f"skip-elbo-{dataset_name}", {f"{n_skipped_latents} log p(x)": elbo})
-            evaluator.update(
-                dataset_name,
-                f"skip-likelihoods-{dataset_name}",
-                {
-                    f"{n_skipped_latents} loss": -loss,
-                    f"{n_skipped_latents} log p(x)": elbo,
-                    f"{n_skipped_latents} log p(x|z)": likelihood,
-                },
-            )
-            klds = {
-                f"{n_skipped_latents} KL z{i+1}": kl
-                for i, kl in enumerate(
-                    [sd.loss.kl_samplewise for sd in stage_datas if sd.loss.kl_samplewise is not None]
-                )
-            }
-            klds[f"{n_skipped_latents} KL(q(z|x), p(z))"] = kl_divergences
-            evaluator.update(dataset_name, f"skip-divergences-{dataset_name}", klds)
+                klds[f"{n_skipped_latents} KL(q(z|x), p(z))"] = kl_divergences
+                evaluator.update(dataset_name, f"skip-divergences-{dataset_name}", klds)
 
 
 def collapse_multiclass_to_binary(y_true, zero_label=None):
@@ -369,7 +379,8 @@ if __name__ == "__main__":
 
             # Test
             for name, dataloader in datamodule.val_loaders.items():
-                test(epoch, dataloader=dataloader, evaluator=test_evaluator, dataset_name=name, max_test_examples=10000)
+                test(epoch, dataloader=dataloader, evaluator=test_evaluator, dataset_name=name, max_test_examples=10000,
+                     is_main=(name == datamodule.primary_val_name))
 
             # Save
             test_elbo = test_evaluator.get_primary_metric().mean().cpu().numpy()
@@ -403,11 +414,11 @@ if __name__ == "__main__":
                     y_true, -y_score, classes, classes[reference_dataset]
                 )  # Negation since higher score means more OOD
                 for ood_target, value_dict in roc.items():
-                    test_evaluator.update(
-                        source=reference_dataset,
-                        series=f"ROC AUC L>k",
-                        metrics={f"ROC AUC L>{n_skipped_latents} {ood_target}": [value_dict["roc_auc"]]},
-                    )
+                    # test_evaluator.update(
+                    #     source=reference_dataset,
+                    #     series=f"ROC AUC L>k",
+                    #     metrics={f"ROC AUC L>{n_skipped_latents} {ood_target}": [value_dict["roc_auc"]]},
+                    # )
                     test_evaluator.update(
                         source=reference_dataset,
                         series=f"ROC AUC L>{n_skipped_latents}",
@@ -422,11 +433,11 @@ if __name__ == "__main__":
                 y_true, y_score = subsample_labels_and_scores(y_true, y_score, max_examples)
                 roc, pr = compute_roc_pr_metrics(y_true, y_score, classes, classes[reference_dataset])
                 for ood_target, value_dict in roc.items():
-                    test_evaluator.update(
-                        source=reference_dataset,
-                        series=f"ROC AUC LLR>k",
-                        metrics={f"ROC AUC LLR>{n_skipped_latents} {ood_target}": [value_dict["roc_auc"]]},
-                    )
+                    # test_evaluator.update(
+                    #     source=reference_dataset,
+                    #     series=f"ROC AUC LLR>k",
+                    #     metrics={f"ROC AUC LLR>{n_skipped_latents} {ood_target}": [value_dict["roc_auc"]]},
+                    # )
                     test_evaluator.update(
                         source=reference_dataset,
                         series=f"ROC AUC LLR>{n_skipped_latents}",
