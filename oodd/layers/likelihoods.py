@@ -744,7 +744,7 @@ def discretized_mix_logistic_rsample_mono(l):
     xs = ls[:-1] + [1] # [3] -> [1] (mono)
 
     # here and below: unpacking the params of the mixture of logistics
-    nr_mix = int(ls[-1] / 10)
+    nr_mix = int(ls[-1] / 4) # 10 -> 4 | C=3 -> C=1 | (3*3 + 1)=10 -> (1*3 + 1)=4
 
     # unpack parameters
     logit_probs = l[:, :, :, :nr_mix]
@@ -826,7 +826,7 @@ def log_discretized_mix_logistic_mono(x, l):
     # - log_scales: (B, H, W, C, nr_mix)
     # - coeffs: (B, H, W, C, nr_mix)
     # This gives in total a number of parameters of: nr_mix * C * 3 + nr_mix
-    nr_mix = int(ls[-1] / 10)
+    nr_mix = int(ls[-1] / 4) # 10 -> 4 | C=3 -> C=1 | (3*3 + 1)=10 -> (1*3 + 1)=4
     logit_probs = l[:, :, :, :nr_mix]
     l = l[:, :, :, nr_mix:].contiguous().view(xs + [nr_mix * 3])  # 3 for mean, scale, coef for each mixture component
     means = l[:, :, :, :, :nr_mix]
@@ -956,6 +956,7 @@ class DiscretizedLogisticMixLikelihoodConv2dMono(LikelihoodModule):
         # alternatively
         # y = x
         # l = params["all_params"]
+        # nr_mix = int(ls[-1] / 4)
         # logit_probs = l[:, :, :, :nr_mix]
         # l = l[:, :, :, nr_mix:].contiguous().view(
         #     xs + [nr_mix * 3])  # 3 for mean, scale, coef for each mixture component

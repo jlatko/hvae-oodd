@@ -22,8 +22,8 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                }' \
                                --val_datasets $VAL_DATA \
                                --likelihood $LIKELIHOOD \
-                               --config_deterministic scripts/configs/default_model/config_deterministic.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic.json
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
 
 
 #CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \

@@ -68,8 +68,8 @@ def setup_wandb(train_dataset_name):
     run_name = ""
     if args.run_name is not None:
         run_name = "_" + args.run_name
-
-    run_name = train_dataset_name + run_name + "-" + wandb.run.name.split("-")[-1]
+    if wandb.run.name is not None:
+        run_name = train_dataset_name + run_name + "-" + wandb.run.name.split("-")[-1]
     wandb.run.name = run_name
     wandb.config.update(args)
     wandb.config.update({"train_dataset": train_dataset_name})
