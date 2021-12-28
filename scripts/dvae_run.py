@@ -136,7 +136,7 @@ def train(epoch):
     wandb.log({"training time": time_passed, "epoch": epoch}, step=epoch * len(datamodule.train_loader))
 
     evaluator.update(
-        "Train", "hyperparameters", {"free_nats": [free_nats], "beta": [beta], "learning_rate": [args.learning_rate]}
+        "Train", "hyperparameters", {"free_nats": [free_nats], "beta": [beta], "learning_rate": [optimizer.param_groups[0]['lr']]}
     )
     evaluator.report(epoch * len(datamodule.train_loader))
     evaluator.log(epoch)

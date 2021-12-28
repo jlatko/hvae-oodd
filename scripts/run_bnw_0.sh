@@ -1,5 +1,7 @@
 GPU=0
-LIKELIHOOD="DiscretizedLogisticMixLikelihoodConv2dMono"
+#LIKELIHOOD="DiscretizedLogisticMixLikelihoodConv2dMono"
+LIKELIHOOD="GaussianLikelihoodConv2d"
+
 VAL_DATA="scripts/configs/val_datasets/bnw_dequantized.json"
 
 echo "Running experiments on GPU $GPU"
