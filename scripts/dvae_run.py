@@ -2,6 +2,9 @@ import argparse
 import datetime
 import logging
 import os
+
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -47,6 +50,11 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 parser.add_argument("--tqdm", action= "store_true", help="whether to display progressbar")
 parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
 parser.add_argument("--test_verbosity", type=int, default=1, help="how much test values to log")
+
+parser.add_argument("--anneal", action= "store_true", help="use CosineAnnealingLR")
+parser.add_argument("--swa", action= "store_true", help="use SWA")
+parser.add_argument("--swa_start", type=int, default=300, help="SWA start epoch")
+
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args, unknown_args = parser.parse_known_args()
@@ -109,6 +117,8 @@ def train(epoch):
         l.backward()
 
         optimizer.step()
+        if scheduler:
+            scheduler.step()
         optimizer.zero_grad()
 
         evaluator.update("Train", "elbo", {"log p(x)": elbo})
@@ -333,6 +343,10 @@ if __name__ == "__main__":
 
     # Optimization
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    if args.anneal:
+        scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+    else:
+        scheduler = None
 
     criterion = oodd.losses.ELBO()
 
