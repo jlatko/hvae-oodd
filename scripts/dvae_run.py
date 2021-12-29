@@ -145,6 +145,7 @@ def train(epoch):
         swa_scheduler.step()
     elif scheduler:
         scheduler.step()
+        wandb.log({"scheduler_lr": scheduler.get_last_lr()}, step=epoch * len(datamodule.train_loader))
 
 
 @torch.no_grad()
