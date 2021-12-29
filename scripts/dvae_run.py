@@ -4,6 +4,7 @@ import logging
 import os
 
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.swa_utils import AveragedModel, SWALR
 
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -117,8 +118,6 @@ def train(epoch):
         l.backward()
 
         optimizer.step()
-        if scheduler:
-            scheduler.step()
         optimizer.zero_grad()
 
         evaluator.update("Train", "elbo", {"log p(x)": elbo})
@@ -140,6 +139,9 @@ def train(epoch):
     )
     evaluator.report(epoch * len(datamodule.train_loader))
     evaluator.log(epoch)
+
+    if scheduler:
+        scheduler.step()
 
 
 @torch.no_grad()
@@ -347,6 +349,9 @@ if __name__ == "__main__":
         scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
     else:
         scheduler = None
+    if args.swa:
+        swa_model = AveragedModel(model)
+        swa_scheduler = SWALR(optimizer, swa_lr=0.05)
 
     criterion = oodd.losses.ELBO()
 
