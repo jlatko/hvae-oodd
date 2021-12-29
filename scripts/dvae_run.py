@@ -54,7 +54,7 @@ parser.add_argument("--test_verbosity", type=int, default=1, help="how much test
 
 parser.add_argument("--anneal", action= "store_true", help="use CosineAnnealingLR")
 parser.add_argument("--swa", action= "store_true", help="use SWA")
-parser.add_argument("--swa_start", type=int, default=300, help="SWA start epoch")
+parser.add_argument("--swa_start", type=int, default=600, help="SWA start epoch")
 
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
@@ -140,12 +140,15 @@ def train(epoch):
     evaluator.report(epoch * len(datamodule.train_loader))
     evaluator.log(epoch)
 
-    if scheduler:
+    if args.swa and epoch >args.swa_start:
+        swa_model.update_parameters(model)
+        swa_scheduler.step()
+    elif scheduler:
         scheduler.step()
 
 
 @torch.no_grad()
-def test(epoch, dataloader, evaluator, dataset_name="test", max_test_examples=float("inf"), is_main=False):
+def test(model, epoch, dataloader, evaluator, dataset_name="test", max_test_examples=float("inf"), is_main=False):
     LOGGER.info(f"Testing: {dataset_name}")
     model.eval()
 
@@ -380,10 +383,15 @@ if __name__ == "__main__":
     for epoch in range(1, args.epochs + 1):
         train(epoch)
 
+        if args.swa and epoch > args.swa_start:
+            model_to_use = swa_model
+        else:
+            model_to_use = model
+
         if epoch % args.test_every == 0:
             # Sample
             with torch.no_grad():
-                likelihood_data, stage_datas = model.sample_from_prior(
+                likelihood_data, stage_datas = model_to_use.sample_from_prior(
                     n_prior_samples=args.n_eval_samples, forced_latent=sample_latents
                 )
                 p_x_samples = likelihood_data.samples.view(args.n_eval_samples, *in_shape)
@@ -398,7 +406,7 @@ if __name__ == "__main__":
 
             # Test
             for name, dataloader in datamodule.val_loaders.items():
-                test(epoch, dataloader=dataloader, evaluator=test_evaluator, dataset_name=name, max_test_examples=10000,
+                test(model_to_use, epoch, dataloader=dataloader, evaluator=test_evaluator, dataset_name=name, max_test_examples=10000,
                      is_main=(name == datamodule.primary_val_name))
 
             # Save
@@ -406,6 +414,8 @@ if __name__ == "__main__":
             if np.max(test_elbos) < test_elbo:
                 test_evaluator.save(args.save_dir)
                 model.save(args.save_dir)
+                if args.swa and epoch >args.swa_start:
+                    swa_model.save(args.save_dir)
                 LOGGER.info("Saved model!")
             test_elbos.append(test_elbo)
 
