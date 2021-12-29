@@ -17,7 +17,7 @@ echo "Running experiments on GPU $GPU"
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=test_mono \
+                               --run_name=gaussian \
                                --train_datasets \
                                '{
                                    "FashionMNISTDequantized": {"dynamic": true, "split": "train"}
@@ -28,29 +28,67 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
 
 
-#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-#                               --seed 1 \
-#                               --train_datasets \
-#                               '{
-#                                   "MNISTDequantized": {"dynamic": true, "split": "train"}
-#                               }' \
-#                               --val_datasets $VAL_DATA \
-#                               --likelihood $LIKELIHOOD \
-#                               --config_deterministic scripts/configs/default_model/config_deterministic.json \
-#                               --config_stochastic scripts/configs/default_model/config_stochastic.json
-#
-#
-#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-#                               --seed 1 \
-#                               --train_datasets \
-#                               '{
-#                                   "KMNISTDequantized": {"dynamic": true, "split": "train"}
-#                               }' \
-#                               --val_datasets $VAL_DATA \
-#                               --likelihood $LIKELIHOOD \
-#                               --config_deterministic scripts/configs/default_model/config_deterministic.json \
-#                               --config_stochastic scripts/configs/default_model/config_stochastic.json
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=gaussian \
+                               --train_datasets \
+                               '{
+                                   "MNISTDequantized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets $VAL_DATA \
+                               --likelihood $LIKELIHOOD \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
 
 
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=gaussian \
+                               --train_datasets \
+                               '{
+                                   "KMNISTDequantized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets $VAL_DATA \
+                               --likelihood $LIKELIHOOD \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+
+
+
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=gaussian \
+                               --train_datasets \
+                               '{
+                                   "Omniglot28x28Binarized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets $VAL_DATA \
+                               --likelihood $LIKELIHOOD \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=gaussian \
+                               --train_datasets \
+                               '{
+                                   "Omniglot28x28InvertedBinarized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets $VAL_DATA \
+                               --likelihood $LIKELIHOOD \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=gaussian \
+                               --train_datasets \
+                               '{
+                                   "notMNISTBinarized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets $VAL_DATA \
+                               --likelihood $LIKELIHOOD \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
 
 
