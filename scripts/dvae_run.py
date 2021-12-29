@@ -143,7 +143,8 @@ def train(epoch):
     if args.swa and epoch >args.swa_start:
         swa_model.update_parameters(model)
         swa_scheduler.step()
-    elif scheduler:
+    elif scheduler is not None:
+        print("STEP: scheduler LR: ", scheduler.get_last_lr(), "optimizer.param_groups[0]['lr']", optimizer.param_groups[0]['lr'])
         scheduler.step()
         wandb.log({"scheduler_lr": scheduler.get_last_lr()}, step=epoch * len(datamodule.train_loader))
 
