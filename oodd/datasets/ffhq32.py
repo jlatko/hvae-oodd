@@ -21,27 +21,24 @@ from oodd.constants import TRAIN_SPLIT, VAL_SPLIT, DATA_DIRECTORY
 
 LOGGER = logging.getLogger(__file__)
 
+FFHQ_DIRECTORY = "/scratch/s193223/ffhq"
 
 class FFHQ32(data.Dataset):
     """Base level FFHQ32 dataset"""
-
-    train_filename = ""
-    test_filename = ""
 
     def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
         self.transform = transform
         self.target_transform = target_transform
         self.train = train  # training set or test set
 
-        # self.root = os.path.join(self.root, "FFHQ32")
-
-        if download:
-            self.download()
-
-        # self.dataset_tarfile = self.train_filename if train else self.test_filename
-        #
-        # self.examples, self.targets = load_dataset_from_file(self.dataset_tarfile)
-        # self.targets = torch.LongTensor(self.targets)
+        self.root = os.path.join(root, "ffhq-32.npy")
+        trX = np.load(self.root, mmap_mode='r')
+        np.random.seed(5)
+        tr_va_split_indices = np.random.permutation(trX.shape[0])
+        if train:
+            self.data = trX[tr_va_split_indices[:-7000]]
+        else:
+            self.data = trX[tr_va_split_indices[-7000:]]
 
         # self.shuffle(seed=19690720)
 
@@ -52,43 +49,29 @@ class FFHQ32(data.Dataset):
         Returns:
             tuple: (image, target) where target is idx of the target class.
         """
-        example, target = self.examples[idx], self.targets[idx]
-
-        example = PIL.Image.fromarray(example.squeeze())  # 28x28 to PIL image
+        example = self.data[idx]
+        target = 0 # no labels?
 
         if self.transform is not None:
             example = self.transform(example)
 
         if self.target_transform is not None:
-            target = self.target_transform(target)
+            target = self.target_transform(0)
 
         return example, target
 
-    def download(self):
-        pass
-
-    def shuffle(self, seed):
-        rng = np.random.default_rng(seed=seed)
-        rand_idx = rng.permutation(list(range(len(self.examples))))
-        self.examples = self.examples[rand_idx]
-        self.targets = self.targets[rand_idx]
-
-    def extract_to_folders(self):
-        pass
-
     def __repr__(self):
-        root, train, transform, target_transform, download = (
+        root, train, transform, target_transform = (
             self.root,
             self.train,
             self.transform,
-            self.target_transform,
-            self.download,
+            self.target_transform
         )
-        fmt_str = f"FFHQ32({root=}, {train=}, {transform=}, {target_transform=}, {download=})"
+        fmt_str = f"FFHQ32({root=}, {train=}, {transform=}, {target_transform=})"
         return fmt_str
 
     def __len__(self):
-        return len(self.examples)
+        return len(self.data)
 
 
 class FFHQ32Quantized(BaseDataset):
@@ -110,13 +93,13 @@ class FFHQ32Quantized(BaseDataset):
 
         transform = self.default_transform if transform is None else transform
         self.dataset = self._data_source(
-            **self._split_args[split], root=root, transform=transform, target_transform=target_transform, download=True
+            **self._split_args[split], root=root, transform=transform, target_transform=target_transform
         )
 
     @classmethod
     def get_argparser(cls):
         parser = argparse.ArgumentParser(description=cls.__name__)
-        parser.add_argument("--root", type=str, default=DATA_DIRECTORY, help="Data storage location")
+        parser.add_argument("--root", type=str, default=FFHQ_DIRECTORY, help="Data storage location")
         return parser
 
     def __len__(self):
