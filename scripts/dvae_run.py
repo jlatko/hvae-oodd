@@ -55,8 +55,14 @@ parser.add_argument("--run_name", type=str, default=None, help="name this wandb 
 parser.add_argument("--test_verbosity", type=int, default=1, help="how much test values to log")
 
 parser.add_argument("--anneal", action= "store_true", help="use CosineAnnealingLR")
-parser.add_argument("--swa", action= "store_true", help="use SWA")
-parser.add_argument("--swa_start", type=int, default=600, help="SWA start epoch")
+parser.add_argument("--swa", action= "store_true", help="use SWA") # not working
+parser.add_argument("--swa_start", type=int, default=600, help="SWA start epoch") # not working
+
+# tags
+TAG_FLAGS = ["special", "test_run", "final"]
+for tag in TAG_FLAGS:
+    parser.add_argument(f"--{tag}", action= "store_true", help="add tag") # not working
+
 
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
@@ -71,6 +77,10 @@ device = get_device()
 def setup_wandb(train_dataset_name):
     # add tags and initialize wandb run
     tags = [train_dataset_name, f"seed_{args.seed}", "train"]
+
+    for key in TAG_FLAGS:
+        if args.getattr(args, key):
+            tags.append(key)
 
     wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
