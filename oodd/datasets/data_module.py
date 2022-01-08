@@ -237,7 +237,7 @@ class DataModule:
         """Setting batch_size also updates the training set data loaders"""
         self._batch_size = batch_size
         self.train_loaders = {name: self._wrap_train_loader(dset) for name, dset in self.train_datasets.items()}
-        self.train_loader = self._wrap_train_loader(self.train_dataset)
+        self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_dataset else None
 
     @property
     def test_batch_size(self):
