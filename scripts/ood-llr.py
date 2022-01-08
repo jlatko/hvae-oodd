@@ -235,7 +235,7 @@ def load_model_and_data(run_id):
         dataloaders = {(k + " test", v) for k, v in datamodule.test_loaders.items()}
     else:
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
-    return model, datamodule, dataloaders
+    return model, datamodule, dataloaders, main_dataset
 
 
 def get_elbo_and_stats(decode_from_p, use_mode):
@@ -289,13 +289,13 @@ if __name__ == "__main__":
     for run_id in run_ids:
         LOGGER.info("RUN ID %s", run_id)
 
-        model, datamodule, dataloaders = load_model_and_data(run_id)
+        model, datamodule, dataloaders, main_dataset = load_model_and_data(run_id)
 
         device = oodd.utils.get_device() if args.device == "auto" else torch.device(args.device)
         LOGGER.info("Device %s", device)
 
         # Add additional datasets to evaluation
-        TRAIN_DATASET_KEY = list(datamodule.train_datasets.keys())[0]
+        TRAIN_DATASET_KEY = main_dataset
 
         LOGGER.info("Train dataset %s", TRAIN_DATASET_KEY)
 
