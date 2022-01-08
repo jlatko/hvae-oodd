@@ -1,6 +1,7 @@
 """Script to evaluate the OODD scores (LLR and L>k) for a saved HVAE"""
 
 import argparse
+import json
 import os
 import logging
 
@@ -41,6 +42,14 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 
 args = parser.parse_args()
 rich.print(vars(args))
+
+def get_all_configs():
+    configs = {}
+    for cfg_file in os.listdir("scripts/configs/val_datasets/"):
+        if cfg_file != "all.json":
+            with open(os.path.join("scripts/configs/val_datasets/", cfg_file), 'r') as fh:
+                configs[cfg_file] = json.load(fh)
+    return configs
 
 def load_run(run_id):
     api = wandb.Api()
@@ -176,6 +185,12 @@ def print_stats(llr, l, lk):
     s += f" {lk_mean=:8.3f},  {lk_var=:8.3f},  {lk_std=:8.3f}"
     print(s)
 
+def get_dataset_config(main_dataset):
+    all_val_configs = get_all_configs()
+    for c, conf in all_val_configs.items():
+        if main_dataset in conf:
+            return c, conf
+
 
 def load_model_and_data(run_id):
     checkpoint_path, run = load_run(run_id=run_id)
@@ -184,6 +199,12 @@ def load_model_and_data(run_id):
     print("LOADING checkpoint from: ", checkpoint_path)
     checkpoint = oodd.models.Checkpoint(path=checkpoint_path)
     checkpoint.load()
+    main_dataset = list(run.config['train_datasets'].keys())[0]
+    print("Main (train) dataset: ", main_dataset)
+    c, datasets = get_dataset_config(main_dataset)
+    print("Will use dataset config from: ", c)
+    print(datasets)
+
 
     if args.use_test:
         datasets = run.config['val_datasets'].copy()
@@ -196,7 +217,11 @@ def load_model_and_data(run_id):
             test_datasets=datasets,
         )
     else:
-        datamodule = checkpoint.datamodule
+        datamodule = DataModule(
+            train_datasets=[],
+            val_datasets=datasets,
+            test_datasets=[],
+        )
     model = checkpoint.model
     model.eval()
     rich.print(datamodule)
