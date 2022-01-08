@@ -78,8 +78,9 @@ def setup_wandb(train_dataset_name):
     # add tags and initialize wandb run
     tags = [train_dataset_name, f"seed_{args.seed}", "train"]
 
+    dargs = vars(args)
     for key in TAG_FLAGS:
-        if args.getattr(args, key):
+        if dargs[key]:
             tags.append(key)
 
     wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
