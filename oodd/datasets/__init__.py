@@ -7,3 +7,4 @@ from oodd.datasets.omniglot import *
 from oodd.datasets.small_norb import *
 from oodd.datasets.not_mnist import *
 from oodd.datasets.subset_dataset import *
+from oodd.datasets.ffhq32 import *

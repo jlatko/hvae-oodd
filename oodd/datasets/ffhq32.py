@@ -85,7 +85,7 @@ class FFHQ32Quantized(BaseDataset):
     def __init__(
         self,
         split=TRAIN_SPLIT,
-        root=DATA_DIRECTORY,
+        root=FFHQ_DIRECTORY,
         transform=None,
         target_transform=None,
     ):
@@ -120,14 +120,16 @@ class FFHQ32Dequantized(FFHQ32Quantized):
             transforms.Scale(a=0, b=1, min_val=0, max_val=256),  # Scale to [0, 1]
         ]
     )
+#
+#
+# class FFHQ32Binarized(FFHQ32Quantized):
+#     """FFHQ32 dataset serving binarized pixel values in {0, 1} via """
+#
+#     default_transform = torchvision.transforms.Compose(
+#         [
+#             torchvision.transforms.ToTensor(),
+#             transforms.Binarize(resample=True),
+#         ]
+#     )
 
 
-class FFHQ32Binarized(FFHQ32Quantized):
-    """FFHQ32 dataset serving binarized pixel values in {0, 1} via """
-
-    default_transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            transforms.Binarize(resample=True),
-        ]
-    )

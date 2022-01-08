@@ -42,8 +42,10 @@ parser.add_argument("--learning_rate", type=float, default=3e-4, help="learning 
 parser.add_argument("--samples", type=int, default=1, help="samples from approximate posterior")
 parser.add_argument("--importance_weighted", type=str2bool, default=False, const=True, nargs="?", help="use iw bound")
 parser.add_argument("--warmup_epochs", type=int, default=200, help="epochs to warm up the KL term.")
+parser.add_argument("--max_beta", type=float, default=1, help="maximum beta term")
 parser.add_argument("--free_nats_epochs", type=int, default=400, help="epochs to warm up the KL term.")
 parser.add_argument("--free_nats", type=float, default=2, help="nats considered free in the KL term")
+parser.add_argument("--free_nats_end", type=float, default=0.0, help="final free nats")
 parser.add_argument("--n_eval_samples", type=int, default=32, help="samples from prior for quality inspection")
 parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed")
 parser.add_argument("--test_every", type=int, default=20, help="epochs between evaluations")
@@ -360,12 +362,12 @@ if __name__ == "__main__":
 
     criterion = oodd.losses.ELBO()
 
-    deterministic_warmup = oodd.variational.DeterministicWarmup(n=args.warmup_epochs)
+    deterministic_warmup = oodd.variational.DeterministicWarmup(n=args.warmup_epochs, t_max=args.max_beta)
     free_nats_cooldown = oodd.variational.FreeNatsCooldown(
         constant_epochs=args.free_nats_epochs // 2,
         cooldown_epochs=args.free_nats_epochs // 2,
         start_val=args.free_nats,
-        end_val=0,
+        end_val=args.free_nats_end,
     )
 
     # Logging
