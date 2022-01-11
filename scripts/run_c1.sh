@@ -23,7 +23,7 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --max_beta 2 \
                                --train_datasets \
                                '{
-                                   "FFHQ32Dequantized": {"dynamic": true, "split": "train"}
+                                   "FFHQ32Dequantized": { "split": "train"}
                                }' \
                                --val_datasets $VAL_DATA \
                                --likelihood $LIKELIHOOD \
@@ -54,7 +54,7 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --max_beta 0.5 \
                                --train_datasets \
                                '{
-                                   "FFHQ32Dequantized": {"dynamic": true, "split": "train"}
+                                   "FFHQ32Dequantized": { "split": "train"}
                                }' \
                                --val_datasets $VAL_DATA \
                                --likelihood $LIKELIHOOD \
@@ -85,7 +85,7 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --max_beta 4 \
                                --train_datasets \
                                '{
-                                   "FFHQ32Dequantized": {"dynamic": true, "split": "train"}
+                                   "FFHQ32Dequantized": { "split": "train"}
                                }' \
                                --val_datasets $VAL_DATA \
                                --likelihood $LIKELIHOOD \

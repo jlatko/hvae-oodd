@@ -27,7 +27,7 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --free_nats_end 1 \
                                --train_datasets \
                                '{
-                                   "FFHQ32Dequantized": {"dynamic": true, "split": "train"}
+                                   "FFHQ32Dequantized": { "split": "train"}
                                }' \
                                --val_datasets $VAL_DATA \
                                --likelihood $LIKELIHOOD \
