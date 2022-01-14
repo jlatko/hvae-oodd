@@ -1,5 +1,6 @@
 GPU=4
 LIKELIHOOD="DiscretizedLogisticMixLikelihoodConv2d"
+VAL_DATA="scripts/configs/val_datasets/32_dequantized.json"
 
 # 1500_1_nats_1
 
