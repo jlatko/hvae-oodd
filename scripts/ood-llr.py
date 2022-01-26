@@ -368,8 +368,8 @@ def get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset,
 
         # dataset, k, score name
         all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO' + suffix].extend(sample_elbo_k.tolist())
-        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD' + suffix + suffix].extend(sample_likelihoods_k.tolist())
-        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD' + suffix].extend(sample_likelihoods_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'+ suffix].extend(sample_kls_k.tolist())
 
         # Get ratio scores
         LLR = sample_elbo - sample_elbo_k
