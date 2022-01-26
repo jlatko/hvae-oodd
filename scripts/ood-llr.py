@@ -238,7 +238,7 @@ def load_model_and_data(run_id):
     return model, datamodule, dataloaders, main_dataset
 
 
-def get_elbo_and_stats(decode_from_p, use_mode):
+def get_elbo_and_stats(x, model, criterion, decode_from_p, use_mode):
     sample_elbos = []
     sample_likelihoods = []
     sample_kls = []
@@ -277,11 +277,114 @@ def get_elbo_and_stats(decode_from_p, use_mode):
 
     return sample_elbo, sample_likelihoods, sample_kls, sample_stats
 
-if __name__ == "__main__":
+def get_all_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id):
+    (
+        sample_elbo,
+        sample_likelihoods,
+        sample_kls,
+        sample_stats
+    ) = get_elbo_and_stats(x, model, criterion, False, False)
+
+    # dataset, k, score name
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO'].extend(sample_elbo.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD'].extend(sample_likelihoods.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL'].extend(sample_kls.tolist())
+    for stat, v in sample_stats.items():
+        all_scores[TRAIN_DATASET_KEY][dataset][0][run_id][stat].extend(v.tolist())
+
+    for k in range(1, model.n_latents):
+        decode_from_p = get_decode_from_p(model.n_latents, k=k)
+        (
+            sample_elbo_k,
+            sample_likelihoods_k,
+            sample_kls_k,
+            sample_stats_k
+        ) = get_elbo_and_stats(x, model, criterion, decode_from_p=decode_from_p, use_mode=decode_from_p)
+
+        # dataset, k, score name
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO'].extend(sample_elbo_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD'].extend(sample_likelihoods_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
+        for stat, v in sample_stats_k.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat].extend(v.tolist())
+
+        # Get ratio scores
+        LLR = sample_elbo - sample_elbo_k
+        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
+        KL_RATIO = sample_kls - sample_kls_k
+
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR'].extend(LLR.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LIKELIHOOD_RATIO.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(KL_RATIO.tolist())
+
+        # also for other stats?
+        sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
+        sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
+        for stat, v in sample_stats_scores_sub.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_sub'].extend(v.tolist())
+        for stat, v in sample_stats_scores_div.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_div'].extend(v.tolist())
+
+
+def get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, run_mode):
+    # TODO: modes
+    # Run without variances:
+    # - Don’t sample but use variance for KL A
+    # - Don’t sample and don’t use variance for KL B
+    # - Sample but use fixed variance C
+    suffix = " " + run_mode
+    if run_mode in ["A"]:
+        use_mode = True
+    else:
+        use_mode = False
+
+    (
+        sample_elbo,
+        sample_likelihoods,
+        sample_kls,
+        sample_stats
+    ) = get_elbo_and_stats(x, model, criterion, False, use_mode)
+
+    # dataset, k, score name
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO' + suffix].extend(sample_elbo.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD' + suffix].extend(sample_likelihoods.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL' + suffix].extend(sample_kls.tolist())
+
+    for k in range(1, model.n_latents):
+        decode_from_p = get_decode_from_p(model.n_latents, k=k)
+        if run_mode == "A":
+            use_mode = True
+        elif run_mode == "B":
+            use_mode = False
+        else:
+            use_mode = decode_from_p
+
+        (
+            sample_elbo_k,
+            sample_likelihoods_k,
+            sample_kls_k,
+            sample_stats_k
+        ) = get_elbo_and_stats(x, model, criterion, decode_from_p=decode_from_p, use_mode=use_mode)
+
+        # dataset, k, score name
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO' + suffix].extend(sample_elbo_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD' + suffix + suffix].extend(sample_likelihoods_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
+
+        # Get ratio scores
+        LLR = sample_elbo - sample_elbo_k
+        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
+        KL_RATIO = sample_kls - sample_kls_k
+
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR' + suffix].extend(LLR.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO' + suffix].extend(LIKELIHOOD_RATIO.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO' + suffix].extend(KL_RATIO.tolist())
+
+
+def main():
     # FILE_NAME_SETTINGS_SPEC = f"iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
 
     # train dataset, val datasets, k, run id (in case multiple seeds), stat name
-    all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
 
     run_ids = args.run_ids.split(",")
     setup_wandb()
@@ -314,52 +417,10 @@ if __name__ == "__main__":
                     x = x.to(device)
 
                     n += x.shape[0]
-                    (
-                        sample_elbo,
-                        sample_likelihoods,
-                        sample_kls,
-                        sample_stats
-                     ) = get_elbo_and_stats(False, False)
 
-                    # dataset, k, score name
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO'].extend(sample_elbo.tolist())
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD'].extend(sample_likelihoods.tolist())
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL'].extend(sample_kls.tolist())
-                    for stat, v in sample_stats.items():
-                        all_scores[TRAIN_DATASET_KEY][dataset][0][run_id][stat].extend(v.tolist())
-
-                    for k in range(1, model.n_latents):
-                        decode_from_p = get_decode_from_p(model.n_latents, k=k)
-                        (
-                            sample_elbo_k,
-                            sample_likelihoods_k,
-                            sample_kls_k,
-                            sample_stats_k
-                         ) = get_elbo_and_stats(decode_from_p=decode_from_p, use_mode=decode_from_p)
-
-                        # dataset, k, score name
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO'].extend(sample_elbo_k.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD'].extend(sample_likelihoods_k.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
-                        for stat, v in sample_stats_k.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat].extend(v.tolist())
-
-                        # Get ratio scores
-                        LLR = sample_elbo - sample_elbo_k
-                        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
-                        KL_RATIO = sample_kls - sample_kls_k
-
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR'].extend(LLR.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LIKELIHOOD_RATIO.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(KL_RATIO.tolist())
-
-                        # also for other stats?
-                        sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
-                        sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
-                        for stat, v in sample_stats_scores_sub.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_sub'].extend(v.tolist())
-                        for stat, v in sample_stats_scores_div.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_div'].extend(v.tolist())
+                    get_all_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id)
+                    get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, "A")
+                    get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, "B")
 
                     if n > N_EQUAL_EXAMPLES_CAP:
                         LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP=}")
@@ -376,3 +437,11 @@ if __name__ == "__main__":
             } for dataset, d2 in d1.items()
         } for in_dataset, d1 in all_scores.items()
     }, get_save_path("all-scores.pt"))
+
+
+if __name__ == "__main__":
+    # GLOBALS
+    all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
+
+
+    main()

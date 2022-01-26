@@ -289,11 +289,21 @@ class GaussianStochasticModule(StochasticModule):
             forced_latent=torch.tensor(forced_latent is not None),
         )
         return z, data
+    #
+    # def _kl_normal_normal(p, q):
+    #     var_ratio = (p.scale / q.scale).pow(2)
+    #     t1 = ((p.loc - q.loc) / q.scale).pow(2)
+    #     return 0.5 * (var_ratio + t1 - 1 - var_ratio.log())
 
     def loss(self, q_data: StochasticData, p_data: StochasticData) -> LossData:
         kl_elementwise, q_logprob, p_logprob = kl_divergence_mc(q_data.z, q_data.dist, p_data.dist)
         kl_latentwise = reduce_to_latent(kl_elementwise)
         kl_samplewise = reduce_to_batch(kl_latentwise)
+        # kl_elementwise_a = torch.distributions.kl_divergence(q_data.dist, p_data.dist)
+        # kl_latentwise_a = reduce_to_latent(kl_elementwise_a)
+        # kl_samplewise_a = reduce_to_batch(kl_latentwise_a)
+
+        kl_elementwise, q_logprob, p_logprob = kl_divergence_mc(q_data.z, q_data.dist, p_data.dist)
         return LossData(
             q_logprob=q_logprob,
             p_logprob=p_logprob,
