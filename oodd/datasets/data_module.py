@@ -37,7 +37,7 @@ def get_dataset(dataset_name: str):
     dataset_name = dataset_name[0]
     return getattr(oodd.datasets, dataset_name)
 
- def getitem(self, idx):
+def getitem(self, idx):
     return self.item_getter(idx)[0], idx
 
 class DataModule:
