@@ -241,7 +241,7 @@ class DataModule:
         self.val_loaders = {name: self._wrap_test_loader(dset) for name, dset in self.val_datasets.items()}
         self.test_loaders = {name: self._wrap_test_loader(dset) for name, dset in self.test_datasets.items()}
         if self._weighted:
-            self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_datasets else None
+            self.train_loader = self._wrap_weighted_loader(self.train_dataset) if self.train_datasets else None
         else:
             self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_datasets else None
 
