@@ -82,8 +82,6 @@ def setup_wandb(run=None):
     # save checkpoints
     wandb.save("*.pt")
 
-
-
 def update_key(sample_stats, x, k):
     sample_stats[f"{k}_sum"].append(sum(x))
     for i, t in enumerate(x):

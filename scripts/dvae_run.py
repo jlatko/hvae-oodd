@@ -328,6 +328,7 @@ def subsample_labels_and_scores(y_true, y_score, n_examples):
 
 if __name__ == "__main__":
     # Data
+    wrap_datasets = False
     datamodule = oodd.datasets.DataModule(
         batch_size=args.batch_size,
         test_batch_size=250,
@@ -335,6 +336,7 @@ if __name__ == "__main__":
         train_datasets=args.train_datasets,
         val_datasets=args.val_datasets,
         test_datasets=args.test_datasets,
+        wrap_datasets=wrap_datasets,
     )
     train_dataset_name = list(datamodule.train_datasets.keys())[0]
     setup_wandb(train_dataset_name)

@@ -37,6 +37,8 @@ def get_dataset(dataset_name: str):
     dataset_name = dataset_name[0]
     return getattr(oodd.datasets, dataset_name)
 
+ def getitem(self, idx):
+    return self.item_getter(idx)[0], idx
 
 class DataModule:
     """Module that serves datasets and dataloaders for training, validation and testing"""
@@ -54,6 +56,7 @@ class DataModule:
         test_datasets: Union[str, List[str], Dict[str, Dict[str, Any]]] = default_datasets,
         batch_size: int = default_batch_size,
         test_batch_size: int = None,
+        wrap_datasets: bool = False,
         data_workers: int = default_data_workers,
     ):
         """A DataModule that serves several datasets for training, validation and testing.
@@ -80,6 +83,9 @@ class DataModule:
         self._batch_size = batch_size
         self._test_batch_size = self.test_batch_size_factor * batch_size if test_batch_size is None else test_batch_size
         self._data_workers = data_workers
+        self._wrap_datasets = wrap_datasets
+        if self._wrap_datasets:
+            oodd.datasets.TorchVisionDataset.__getitem__ = getitem
 
         # Parse inputs
         train_datasets = parse_dataset_argument(train_datasets)
