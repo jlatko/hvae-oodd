@@ -6,6 +6,8 @@ import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.swa_utils import AveragedModel, SWALR
 
+from oodd.utils.wandb import download_or_find
+
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -26,7 +28,7 @@ import oodd.models
 import oodd.datasets
 import oodd.variational
 import oodd.losses
-from oodd.datasets.data_module import parse_dataset_argument
+from oodd.datasets.data_module import parse_dataset_argument, get_sample_weights
 
 from oodd.utils import str2bool, get_device, log_sum_exp, set_seed, plot_gallery
 from oodd.evaluators import Evaluator
@@ -54,6 +56,12 @@ parser.add_argument("--tqdm", action= "store_true", help="whether to display pro
 parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
 parser.add_argument("--test_verbosity", type=int, default=1, help="how much test values to log")
 
+parser.add_argument("--sampling_id", type=str, default=None, help="")
+parser.add_argument("--sampling_key", type=str, default=None, help="")
+parser.add_argument("--sampling_mode", type=str, default="pow", help="")
+parser.add_argument("--sampling_a", type=float, default=100, help="")
+parser.add_argument("--sampling_b", type=float, default=5, help="")
+
 parser.add_argument("--anneal", action= "store_true", help="use CosineAnnealingLR")
 parser.add_argument("--swa", action= "store_true", help="use SWA") # not working
 parser.add_argument("--swa_start", type=int, default=600, help="SWA start epoch") # not working
@@ -79,6 +87,10 @@ def setup_wandb(train_dataset_name):
     tags = [train_dataset_name, f"seed_{args.seed}", "train"]
 
     dargs = vars(args)
+
+    if args.sampling_id is not None:
+        tags.append(f"sampl_{args.sampling_mode}")
+
     for key in TAG_FLAGS:
         if dargs[key]:
             tags.append(key)
@@ -325,10 +337,21 @@ def subsample_labels_and_scores(y_true, y_score, n_examples):
     y_score = np.concatenate([y_score[idx] for idx in indices])
     return y_true, y_score
 
+def get_sampling_weights(args):
+    if args.sampling_id is None:
+        return None
+    else:
+        assert args.sampling_key is not None
+
+        path = download_or_find(args.sampling_id, "complexity.pt")
+        complexities = torch.load(path)
+        print(complexities.keys())
+        complexities = np.array(complexities[args.sampling_key])
+        return get_sample_weights(complexities, args.sampling_mode, args.sampling_a, args.sampling_b)
 
 if __name__ == "__main__":
     # Data
-    wrap_datasets = False
+    sampling_weights = get_sampling_weights(args)
     datamodule = oodd.datasets.DataModule(
         batch_size=args.batch_size,
         test_batch_size=250,
@@ -336,7 +359,8 @@ if __name__ == "__main__":
         train_datasets=args.train_datasets,
         val_datasets=args.val_datasets,
         test_datasets=args.test_datasets,
-        wrap_datasets=wrap_datasets,
+        wrap_datasets=False,
+        sample_weigths=sampling_weights
     )
     train_dataset_name = list(datamodule.train_datasets.keys())[0]
     setup_wandb(train_dataset_name)
