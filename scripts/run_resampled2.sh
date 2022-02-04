@@ -50,7 +50,7 @@ echo "Running experiments on GPU $GPU"
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=resampled_lo \
+                               --run_name=resampled_low \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='FashionMNISTBinarized train' \
                                --sampling_mode=boost_lo \

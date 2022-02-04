@@ -43,10 +43,10 @@ echo "Running experiments on GPU $GPU"
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=resampled_lo_nats_05 \
+                               --run_name=resampled_low_nats_05 \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='CIFAR10Dequantized train' \
-                               --sampling_mode=boost_lo \
+                               --sampling_mode=boost_low \
                                --sampling_a=550 \
                                --sampling_b=5 \
                                --free_nats_end 0.5 \
