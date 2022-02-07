@@ -24,6 +24,7 @@ from oodd.datasets import DataModule
 from oodd.utils import reduce_to_batch
 import wandb
 
+from oodd.utils.argparsing import json_file_or_json_unique_keys
 from oodd.utils.wandb import find_or_download_checkpoint
 
 LOGGER = logging.getLogger()
@@ -39,6 +40,7 @@ parser.add_argument("--batch_size", type=int, default=500, help="batch size for 
 parser.add_argument("--device", type=str, default="auto", help="device to evaluate on")
 parser.add_argument("--use_test", action="store_true")
 parser.add_argument("--use_train", action="store_true")
+parser.add_argument("--val_datasets", type=json_file_or_json_unique_keys, default=None)
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
 
 args = parser.parse_args()
@@ -185,6 +187,8 @@ def print_stats(llr, l, lk):
     print(s)
 
 def get_dataset_config(main_dataset):
+    if args.val_datasets is not None:
+        return args.val_datasets
     all_val_configs = get_all_configs()
     for c, conf in all_val_configs.items():
         if main_dataset in conf:
