@@ -236,8 +236,7 @@ def load_model_and_data(run_id):
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
 
     if args.use_train:
-        for k, v in datamodule.train_loaders.items():
-            dataloaders[k + " train"] = v
+        dataloaders |= {(k + " train", v) for k, v in datamodule.train_loaders.items()}
 
     return model, datamodule, dataloaders, main_dataset
 
