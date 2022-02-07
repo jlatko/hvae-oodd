@@ -188,7 +188,7 @@ def print_stats(llr, l, lk):
 
 def get_dataset_config(main_dataset):
     if args.val_datasets is not None:
-        return args.val_datasets
+        return "CLI args", args.val_datasets
     all_val_configs = get_all_configs()
     for c, conf in all_val_configs.items():
         if main_dataset in conf:
