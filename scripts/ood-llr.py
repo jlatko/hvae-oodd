@@ -210,13 +210,13 @@ def load_model_and_data(run_id):
             datasets[k]['split'] = "test"
 
         datamodule = DataModule(
-            train_datasets=[],
+            train_datasets=run.config['train_datasets'],
             val_datasets=[],
             test_datasets=datasets,
         )
     else:
         datamodule = DataModule(
-            train_datasets=[],
+            train_datasets=run.config['train_datasets'],
             val_datasets=datasets,
             test_datasets=[],
         )
@@ -233,6 +233,10 @@ def load_model_and_data(run_id):
         dataloaders = {(k + " test", v) for k, v in datamodule.test_loaders.items()}
     else:
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
+
+    for k, v in datamodule.train_loaders.items():
+        dataloaders[k + " train"] = v
+
     return model, datamodule, dataloaders, main_dataset
 
 
