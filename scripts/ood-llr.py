@@ -38,6 +38,7 @@ parser.add_argument("--n_eval_examples", type=int, default=10000, help="cap on t
 parser.add_argument("--batch_size", type=int, default=500, help="batch size for evaluation")
 parser.add_argument("--device", type=str, default="auto", help="device to evaluate on")
 parser.add_argument("--use_test", action="store_true")
+parser.add_argument("--use_train", action="store_true")
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
 
 args = parser.parse_args()
@@ -234,8 +235,9 @@ def load_model_and_data(run_id):
     else:
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
 
-    for k, v in datamodule.train_loaders.items():
-        dataloaders[k + " train"] = v
+    if args.use_train:
+        for k, v in datamodule.train_loaders.items():
+            dataloaders[k + " train"] = v
 
     return model, datamodule, dataloaders, main_dataset
 
