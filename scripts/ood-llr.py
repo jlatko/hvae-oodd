@@ -214,17 +214,11 @@ def load_model_and_data(run_id):
         for k in datasets.keys():
             datasets[k]['split'] = "test"
 
-        datamodule = DataModule(
-            train_datasets=run.config['train_datasets'],
-            val_datasets=[],
-            test_datasets=datasets,
-        )
-    else:
-        datamodule = DataModule(
-            train_datasets=run.config['train_datasets'],
-            val_datasets=datasets,
-            test_datasets=[],
-        )
+    datamodule = DataModule(
+        train_datasets=[],
+        val_datasets=datasets,
+        test_datasets=run.config['train_datasets'],
+    )
     model = checkpoint.model
     model.eval()
     rich.print(datamodule)
@@ -235,12 +229,12 @@ def load_model_and_data(run_id):
     LOGGER.info("%s", datamodule)
 
     if args.use_test:
-        dataloaders = {(k + " test", v) for k, v in datamodule.test_loaders.items()}
+        dataloaders = {(k + " test", v) for k, v in datamodule.val_loaders.items()}
     else:
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
 
     if args.use_train:
-        dataloaders |= {(k + " train", v) for k, v in datamodule.train_loaders.items()}
+        dataloaders |= {(k + " train", v) for k, v in datamodule.test_loaders.items()}
 
     return model, datamodule, dataloaders, main_dataset
 
