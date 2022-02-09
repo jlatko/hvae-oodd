@@ -15,12 +15,12 @@ echo "Running experiments on GPU $GPU"
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=resampled_hi \
+                               --run_name=resampled_pow_hi \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='FashionMNISTBinarized train' \
-                               --sampling_mode=boost_high \
-                               --sampling_a=600 \
-                               --sampling_b=5 \
+                               --sampling_mode=pow \
+                               --sampling_a=100 \
+                               --sampling_b=9 \
                                --train_datasets \
                                '{
                                    "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
@@ -32,12 +32,12 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=resampled_pow_up \
+                               --run_name=resampled_pow_lo \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='FashionMNISTBinarized train' \
                                --sampling_mode=pow \
                                --sampling_a=100 \
-                               --sampling_b=8 \
+                               --sampling_b=-9 \
                                --train_datasets \
                                '{
                                    "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
