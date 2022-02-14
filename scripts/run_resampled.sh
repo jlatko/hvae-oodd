@@ -14,71 +14,107 @@ echo "Running experiments on GPU $GPU"
 #        'KMNISTBinarized': {'split': 'validation', 'dynamic': False}
 
 
-CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-                               --seed 1 \
-                               --run_name=test_ \
-                               --sampling_id=3r1vs6qa \
-                               --sampling_key='FashionMNISTBinarized train' \
-                               --special \
-                               --epochs 10 \
-                               --train_datasets \
-                               '{
-                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
-                               }' \
-                               --val_datasets scripts/configs/val_datasets/binarized.json \
-                               --likelihood BernoulliLikelihoodConv2d \
-                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=test_ \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='FashionMNISTBinarized train' \
+#                               --special \
+#                               --epochs 10 \
+#                               --train_datasets \
+#                               '{
+#                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets scripts/configs/val_datasets/binarized.json \
+#                               --likelihood BernoulliLikelihoodConv2d \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+#
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=test_resampled_pow_hi \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='FashionMNISTBinarized train' \
+#                               --special \
+#                               --epochs 10 \
+#                               --sampling_mode=pow \
+#                               --sampling_a=100 \
+#                               --sampling_b=9 \
+#                               --train_datasets \
+#                               '{
+#                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets scripts/configs/val_datasets/binarized.json \
+#                               --likelihood BernoulliLikelihoodConv2d \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+#
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=test_resampled_pow_lo \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='FashionMNISTBinarized train' \
+#                               --special \
+#                               --epochs 10 \
+#                               --sampling_mode=pow \
+#                               --sampling_a=100 \
+#                               --sampling_b=-9 \
+#                               --train_datasets \
+#                               '{
+#                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets scripts/configs/val_datasets/binarized.json \
+#                               --likelihood BernoulliLikelihoodConv2d \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+#
+#
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=test_resampled_hi \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='FashionMNISTBinarized train' \
+#                               --special \
+#                               --epochs 10 \
+#                               --sampling_mode=boost_high \
+#                               --sampling_a=600 \
+#                               --sampling_b=5 \
+#                               --train_datasets \
+#                               '{
+#                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets scripts/configs/val_datasets/binarized.json \
+#                               --likelihood BernoulliLikelihoodConv2d \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+#
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=test_resampled_low \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='FashionMNISTBinarized train' \
+#                               --special \
+#                               --epochs 10 \
+#                               --sampling_mode=boost_low \
+#                               --sampling_a=550 \
+#                               --sampling_b=5 \
+#                               --train_datasets \
+#                               '{
+#                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets scripts/configs/val_datasets/binarized.json \
+#                               --likelihood BernoulliLikelihoodConv2d \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=test_resampled_pow_hi \
+                               --run_name=resampled_very_hi \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='FashionMNISTBinarized train' \
-                               --special \
-                               --epochs 10 \
-                               --sampling_mode=pow \
-                               --sampling_a=100 \
-                               --sampling_b=9 \
-                               --train_datasets \
-                               '{
-                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
-                               }' \
-                               --val_datasets scripts/configs/val_datasets/binarized.json \
-                               --likelihood BernoulliLikelihoodConv2d \
-                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
-
-CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-                               --seed 1 \
-                               --run_name=test_resampled_pow_lo \
-                               --sampling_id=3r1vs6qa \
-                               --sampling_key='FashionMNISTBinarized train' \
-                               --special \
-                               --epochs 10 \
-                               --sampling_mode=pow \
-                               --sampling_a=100 \
-                               --sampling_b=-9 \
-                               --train_datasets \
-                               '{
-                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
-                               }' \
-                               --val_datasets scripts/configs/val_datasets/binarized.json \
-                               --likelihood BernoulliLikelihoodConv2d \
-                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
-
-
-CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-                               --seed 1 \
-                               --run_name=test_resampled_hi \
-                               --sampling_id=3r1vs6qa \
-                               --sampling_key='FashionMNISTBinarized train' \
-                               --special \
-                               --epochs 10 \
                                --sampling_mode=boost_high \
-                               --sampling_a=600 \
-                               --sampling_b=5 \
+                               --sampling_a=650 \
+                               --sampling_b=30 \
                                --train_datasets \
                                '{
                                    "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
@@ -90,14 +126,48 @@ CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
                                --seed 1 \
-                               --run_name=test_resampled_low \
+                               --run_name=resampled_very_low \
                                --sampling_id=3r1vs6qa \
                                --sampling_key='FashionMNISTBinarized train' \
-                               --special \
-                               --epochs 10 \
-                               --sampling_mode=boost_lo \
+                               --sampling_mode=boost_low \
                                --sampling_a=550 \
-                               --sampling_b=5 \
+                               --sampling_b=30 \
+                               --train_datasets \
+                               '{
+                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets scripts/configs/val_datasets/binarized.json \
+                               --likelihood BernoulliLikelihoodConv2d \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+
+
+
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=resampled_pow_very_hi \
+                               --sampling_id=3r1vs6qa \
+                               --sampling_key='FashionMNISTBinarized train' \
+                               --sampling_mode=pow \
+                               --sampling_a=100 \
+                               --sampling_b=11 \
+                               --train_datasets \
+                               '{
+                                   "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
+                               }' \
+                               --val_datasets scripts/configs/val_datasets/binarized.json \
+                               --likelihood BernoulliLikelihoodConv2d \
+                               --config_deterministic scripts/configs/default_model/config_deterministic_bnw.json \
+                               --config_stochastic scripts/configs/default_model/config_stochastic_bnw.json
+
+CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+                               --seed 1 \
+                               --run_name=resampled_pow_very_lo \
+                               --sampling_id=3r1vs6qa \
+                               --sampling_key='FashionMNISTBinarized train' \
+                               --sampling_mode=pow \
+                               --sampling_a=100 \
+                               --sampling_b=-11 \
                                --train_datasets \
                                '{
                                    "FashionMNISTBinarized": {"dynamic": true, "split": "train"}
