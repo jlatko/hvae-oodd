@@ -1,4 +1,4 @@
-GPU=1
+GPU=4
 #LIKELIHOOD="BernoulliLikelihoodConv2d"
 #VAL_DATA="scripts/configs/val_datasets/binarized.json"
 
