@@ -122,9 +122,10 @@ def train(epoch):
 
     iterator = tqdm(enumerate(datamodule.train_loader), smoothing=0.9, total=len(datamodule.train_loader), leave=False, disable=(not args.tqdm))
     s = time.time()
-    for _, (x, _) in iterator:
+    inds = []
+    for _, (x, idx) in iterator:
         x = x.to(device)
-
+        inds.extend(list(idx.detach().cpu().numpy()))
         likelihood_data, stage_datas = model(x, n_posterior_samples=args.samples)
         kl_divergences = [
             stage_data.loss.kl_elementwise for stage_data in stage_datas if stage_data.loss.kl_elementwise is not None
@@ -164,6 +165,8 @@ def train(epoch):
     )
     evaluator.report(epoch * len(datamodule.train_loader))
     evaluator.log(epoch)
+
+    np.save(os.path.join(wandb.run.dir, f"inds_{epoch}.np"), np.array(inds))
 
     if args.swa and epoch >args.swa_start:
         swa_model.update_parameters(model)
@@ -359,7 +362,7 @@ if __name__ == "__main__":
         train_datasets=args.train_datasets,
         val_datasets=args.val_datasets,
         test_datasets=args.test_datasets,
-        wrap_datasets=False,
+        wrap_datasets=True,
         sample_weigths=sampling_weights
     )
     train_dataset_name = list(datamodule.train_datasets.keys())[0]
