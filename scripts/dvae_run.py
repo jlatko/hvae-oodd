@@ -111,6 +111,7 @@ def setup_wandb(train_dataset_name):
 
     # save checkpoints
     wandb.save("*.pt")
+    wandb.save("*.npy")
 
 
 def train(epoch):
@@ -166,7 +167,7 @@ def train(epoch):
     evaluator.report(epoch * len(datamodule.train_loader))
     evaluator.log(epoch)
 
-    np.save(os.path.join(wandb.run.dir, f"inds_{epoch}.np"), np.array(inds))
+    np.save(os.path.join(wandb.run.dir, f"inds_{epoch}.npy"), np.array(inds))
 
     if args.swa and epoch >args.swa_start:
         swa_model.update_parameters(model)
