@@ -103,42 +103,42 @@ echo "Running experiments on GPU $GPU"
 #                               --config_stochastic scripts/configs/default_model/config_stochastic_32.json
 
 
-CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-                               --seed 1 \
-                               --run_name=resampled_very_low_nats_05 \
-                               --sampling_id=3r1vs6qa \
-                               --sampling_key='CIFAR10Dequantized train' \
-                               --sampling_mode=boost_low \
-                               --sampling_a=575 \
-                               --sampling_b=30 \
-                               --free_nats_end 0.5 \
-                               --train_datasets \
-                               '{
-                                   "CIFAR10Dequantized": {"dynamic": true, "split": "train"}
-                               }' \
-                               --val_datasets $VAL_DATA \
-                               --likelihood $LIKELIHOOD \
-                               --config_deterministic scripts/configs/default_model/config_deterministic_32.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic_32.json
-
-
-CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
-                               --seed 1 \
-                               --run_name=resampled_very_high_nats_05 \
-                               --sampling_id=3r1vs6qa \
-                               --sampling_key='CIFAR10Dequantized train' \
-                               --sampling_mode=boost_high \
-                               --sampling_a=650 \
-                               --sampling_b=30 \
-                               --free_nats_end 0.5 \
-                               --train_datasets \
-                               '{
-                                   "CIFAR10Dequantized": {"dynamic": true, "split": "train"}
-                               }' \
-                               --val_datasets $VAL_DATA \
-                               --likelihood $LIKELIHOOD \
-                               --config_deterministic scripts/configs/default_model/config_deterministic_32.json \
-                               --config_stochastic scripts/configs/default_model/config_stochastic_32.json
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=resampled_very_low_nats_05 \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='CIFAR10Dequantized train' \
+#                               --sampling_mode=boost_low \
+#                               --sampling_a=575 \
+#                               --sampling_b=30 \
+#                               --free_nats_end 0.5 \
+#                               --train_datasets \
+#                               '{
+#                                   "CIFAR10Dequantized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets $VAL_DATA \
+#                               --likelihood $LIKELIHOOD \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_32.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_32.json
+#
+#
+#CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
+#                               --seed 1 \
+#                               --run_name=resampled_very_high_nats_05 \
+#                               --sampling_id=3r1vs6qa \
+#                               --sampling_key='CIFAR10Dequantized train' \
+#                               --sampling_mode=boost_high \
+#                               --sampling_a=650 \
+#                               --sampling_b=30 \
+#                               --free_nats_end 0.5 \
+#                               --train_datasets \
+#                               '{
+#                                   "CIFAR10Dequantized": {"dynamic": true, "split": "train"}
+#                               }' \
+#                               --val_datasets $VAL_DATA \
+#                               --likelihood $LIKELIHOOD \
+#                               --config_deterministic scripts/configs/default_model/config_deterministic_32.json \
+#                               --config_stochastic scripts/configs/default_model/config_stochastic_32.json
 
 
 CUDA_VISIBLE_DEVICES=$GPU python scripts/dvae_run.py \
