@@ -294,6 +294,8 @@ class GaussianStochasticModule(StochasticModule):
         kl_elementwise, q_logprob, p_logprob = kl_divergence_mc(q_data.z, q_data.dist, p_data.dist)
         kl_latentwise = reduce_to_latent(kl_elementwise)
         kl_samplewise = reduce_to_batch(kl_latentwise)
+
+        kl_elementwise, q_logprob, p_logprob = kl_divergence_mc(q_data.z, q_data.dist, p_data.dist)
         return LossData(
             q_logprob=q_logprob,
             p_logprob=p_logprob,

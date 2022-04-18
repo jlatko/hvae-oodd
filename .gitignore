@@ -150,4 +150,8 @@ pytest
 # pycharm
 .idea
 
-notebooks
+notebooks_analysis
+#*.ipynb
+.ipynb_checkpoints
+
+*.DS_Store

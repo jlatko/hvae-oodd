@@ -21,6 +21,8 @@ import oodd.utils
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+
 LOGGER = logging.getLogger()
 
 
@@ -30,7 +32,6 @@ parser.add_argument("--complexity", type=str, default="mean_local_entropy", help
 parser.add_argument("--complexity_param", type=int, default=3, help="locality radius or compression mode")
 parser.add_argument("--n_eval_examples", type=int, default=10000, help="cap on the number of examples to use")
 parser.add_argument("--save_dir", type=str, default="/scratch/s193223/oodd", help="directory to store scores in")
-parser.add_argument("--use_test", action="store_true")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args = parser.parse_args()
@@ -83,7 +84,7 @@ complexity_metrics = {
 
 def init_wandb():
     tags = ["complexity"]
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
 
     # wandb configuration
@@ -99,32 +100,23 @@ if __name__ == "__main__":
     init_wandb()
 
     # Data
-    if args.use_test:
-        val_datasets = []
-        test_datasets = args.val_datasets
-        for k in test_datasets.keys():
-            test_datasets[k]["split"] = "test"
-    else:
-        val_datasets = args.val_datasets
-        test_datasets = []
+    val_datasets = args.val_datasets
     datamodule = oodd.datasets.DataModule(
         batch_size=1,
         test_batch_size=1,
         data_workers=args.data_workers,
         train_datasets=[],
         val_datasets=val_datasets,
-        test_datasets=test_datasets,
+        test_datasets=[],
     )
 
-    n_test_batches = get_lengths(datamodule.val_datasets) + get_lengths(datamodule.test_datasets)
+    n_test_batches = get_lengths(datamodule.val_datasets)
+
 
     N_EQUAL_EXAMPLES_CAP = args.n_eval_examples
     LOGGER.info("%s = %s", "N_EQUAL_EXAMPLES_CAP", N_EQUAL_EXAMPLES_CAP)
 
-    if args.use_test:
-        dataloaders = {(k + " test", v) for k, v in datamodule.val_loaders.items()}
-    else:
-        dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
+    dataloaders = {(k + " " + val_datasets[k]["split"], v) for k, v in datamodule.val_loaders.items()}
 
     complexities = defaultdict(list)
 

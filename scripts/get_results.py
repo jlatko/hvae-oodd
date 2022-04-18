@@ -11,6 +11,7 @@ import wandb
 
 from oodd.utils.oodd import compute_roc_pr_metrics
 from oodd.utils.wandb import download_or_find
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
 
 LOGGER = logging.getLogger()
 
@@ -22,7 +23,12 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 args = parser.parse_args()
 rich.print(vars(args))
 
-SCORES_TO_NEGATE = ["ELBO", 'LIKELIHOOD']
+
+SCORES_TO_NEGATE = [
+    "ELBO", 'LIKELIHOOD',
+    "ELBO A", 'LIKELIHOOD A',
+    "ELBO B", 'LIKELIHOOD B',
+]
 SCORES_TO_SHOW = ["LLR", "ELBO", "LIKELIHOOD", "KL", "p_var_1", "p_var_sum"]
 
 
@@ -34,11 +40,11 @@ def load_data(run_id):
 
 def setup_wandb(run_id):
     api = wandb.Api()
-    run = api.run(f"johnnysummer/hvae/{run_id}")
+    run = api.run(f"{WANDB_USER}/{WANDB_PROJECT}/{run_id}")
 
     tags = ["results", run_id]
 
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
     wandb.config.update(args)
 
@@ -70,16 +76,16 @@ if __name__ == "__main__":
         key=lambda x: ("a" if "Binarized" in x else "b") + x.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
     )
     for reference_dataset in reference_datasets:
-        reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
+        # reference_dataset_stripped = reference_dataset.replace("Binarized", "").replace("Quantized", "").replace("Dequantized", "")
         test_datasets = sorted(list(data[reference_dataset].keys()))
 
         # check if ok
-        reference_dataset_key = [test_dataset for test_dataset in test_datasets if test_dataset.split()[0] == reference_dataset_stripped]
+        reference_dataset_key = [test_dataset for test_dataset in test_datasets if test_dataset.split()[0] == reference_dataset]
         if len(reference_dataset_key) == 0:
-            print(f"ERROR: {reference_dataset_stripped} not in {test_datasets}")
+            print(f"ERROR: {reference_dataset} not in {test_datasets}")
             continue
         if len(reference_dataset_key) > 1:
-            print(f"WARNING: {reference_dataset_stripped} appears more then once in: {test_datasets}")
+            print(f"WARNING: {reference_dataset} appears more then once in: {test_datasets}")
 
         # TODO: is it reference?
         reference_dataset_key = reference_dataset_key[0]
@@ -88,7 +94,7 @@ if __name__ == "__main__":
         all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         ref_scores = defaultdict(lambda: defaultdict(dict))
         for test_dataset in test_datasets:
-            if test_dataset.split()[0] == reference_dataset_stripped:
+            if test_dataset.split()[0] == reference_dataset:
                 continue
 
             print(f"--- {reference_dataset}  vs {test_dataset} ---")

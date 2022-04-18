@@ -1,6 +1,7 @@
 """Script to evaluate the OODD scores (LLR and L>k) for a saved HVAE"""
 
 import argparse
+import json
 import os
 import logging
 
@@ -23,7 +24,10 @@ from oodd.datasets import DataModule
 from oodd.utils import reduce_to_batch
 import wandb
 
+from oodd.utils.argparsing import json_file_or_json_unique_keys
 from oodd.utils.wandb import find_or_download_checkpoint
+
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
 
 LOGGER = logging.getLogger()
 
@@ -37,14 +41,24 @@ parser.add_argument("--n_eval_examples", type=int, default=10000, help="cap on t
 parser.add_argument("--batch_size", type=int, default=500, help="batch size for evaluation")
 parser.add_argument("--device", type=str, default="auto", help="device to evaluate on")
 parser.add_argument("--use_test", action="store_true")
+parser.add_argument("--use_train", action="store_true")
+parser.add_argument("--val_datasets", type=json_file_or_json_unique_keys, default=None)
 parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
 
 args = parser.parse_args()
 rich.print(vars(args))
 
+def get_all_configs():
+    configs = {}
+    for cfg_file in os.listdir("scripts/configs/val_datasets/"):
+        if cfg_file != "all.json":
+            with open(os.path.join("scripts/configs/val_datasets/", cfg_file), 'r') as fh:
+                configs[cfg_file] = json.load(fh)
+    return configs
+
 def load_run(run_id):
     api = wandb.Api()
-    run = api.run(f"johnnysummer/hvae/{run_id}")
+    run = api.run(f"{WANDB_USER}/{WANDB_PROJECT}/{run_id}")
     checkpoint_path = find_or_download_checkpoint(run=run)
     return checkpoint_path, run
 
@@ -55,7 +69,7 @@ def setup_wandb(run=None):
     if run is not None:
         tags += [tag for tag in run.tags if tag != "train"]
 
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
     wandb.config.update(args)
 
@@ -72,8 +86,6 @@ def setup_wandb(run=None):
 
     # save checkpoints
     wandb.save("*.pt")
-
-
 
 def update_key(sample_stats, x, k):
     sample_stats[f"{k}_sum"].append(sum(x))
@@ -176,6 +188,14 @@ def print_stats(llr, l, lk):
     s += f" {lk_mean=:8.3f},  {lk_var=:8.3f},  {lk_std=:8.3f}"
     print(s)
 
+def get_dataset_config(main_dataset):
+    if args.val_datasets is not None:
+        return "CLI args", args.val_datasets
+    all_val_configs = get_all_configs()
+    for c, conf in all_val_configs.items():
+        if main_dataset in conf:
+            return c, conf
+
 
 def load_model_and_data(run_id):
     checkpoint_path, run = load_run(run_id=run_id)
@@ -184,19 +204,23 @@ def load_model_and_data(run_id):
     print("LOADING checkpoint from: ", checkpoint_path)
     checkpoint = oodd.models.Checkpoint(path=checkpoint_path)
     checkpoint.load()
+    main_dataset = list(run.config['train_datasets'].keys())[0]
+    print("Main (train) dataset: ", main_dataset)
+    c, datasets = get_dataset_config(main_dataset)
+    print("Will use dataset config from: ", c)
+    print(datasets)
+
 
     if args.use_test:
         datasets = run.config['val_datasets'].copy()
         for k in datasets.keys():
             datasets[k]['split'] = "test"
 
-        datamodule = DataModule(
-            train_datasets=[],
-            val_datasets=[],
-            test_datasets=datasets,
-        )
-    else:
-        datamodule = checkpoint.datamodule
+    datamodule = DataModule(
+        train_datasets=[],
+        val_datasets=datasets,
+        test_datasets=run.config['train_datasets'],
+    )
     model = checkpoint.model
     model.eval()
     rich.print(datamodule)
@@ -207,13 +231,17 @@ def load_model_and_data(run_id):
     LOGGER.info("%s", datamodule)
 
     if args.use_test:
-        dataloaders = {(k + " test", v) for k, v in datamodule.test_loaders.items()}
+        dataloaders = {(k + " test", v) for k, v in datamodule.val_loaders.items()}
     else:
         dataloaders = {(k + " val", v) for k, v in datamodule.val_loaders.items()}
-    return model, datamodule, dataloaders
+
+    if args.use_train:
+        dataloaders |= {(k + " train", v) for k, v in datamodule.test_loaders.items()}
+
+    return model, datamodule, dataloaders, main_dataset
 
 
-def get_elbo_and_stats(decode_from_p, use_mode):
+def get_elbo_and_stats(x, model, criterion, decode_from_p, use_mode):
     sample_elbos = []
     sample_likelihoods = []
     sample_kls = []
@@ -252,11 +280,114 @@ def get_elbo_and_stats(decode_from_p, use_mode):
 
     return sample_elbo, sample_likelihoods, sample_kls, sample_stats
 
-if __name__ == "__main__":
+def get_all_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id):
+    (
+        sample_elbo,
+        sample_likelihoods,
+        sample_kls,
+        sample_stats
+    ) = get_elbo_and_stats(x, model, criterion, False, False)
+
+    # dataset, k, score name
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO'].extend(sample_elbo.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD'].extend(sample_likelihoods.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL'].extend(sample_kls.tolist())
+    for stat, v in sample_stats.items():
+        all_scores[TRAIN_DATASET_KEY][dataset][0][run_id][stat].extend(v.tolist())
+
+    for k in range(1, model.n_latents):
+        decode_from_p = get_decode_from_p(model.n_latents, k=k)
+        (
+            sample_elbo_k,
+            sample_likelihoods_k,
+            sample_kls_k,
+            sample_stats_k
+        ) = get_elbo_and_stats(x, model, criterion, decode_from_p=decode_from_p, use_mode=decode_from_p)
+
+        # dataset, k, score name
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO'].extend(sample_elbo_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD'].extend(sample_likelihoods_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
+        for stat, v in sample_stats_k.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat].extend(v.tolist())
+
+        # Get ratio scores
+        LLR = sample_elbo - sample_elbo_k
+        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
+        KL_RATIO = sample_kls - sample_kls_k
+
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR'].extend(LLR.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LIKELIHOOD_RATIO.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(KL_RATIO.tolist())
+
+        # also for other stats?
+        sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
+        sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
+        for stat, v in sample_stats_scores_sub.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_sub'].extend(v.tolist())
+        for stat, v in sample_stats_scores_div.items():
+            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_div'].extend(v.tolist())
+
+
+def get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, run_mode):
+    # TODO: modes
+    # Run without variances:
+    # - Don’t sample but use variance for KL A
+    # - Don’t sample and don’t use variance for KL B
+    # - Sample but use fixed variance C
+    suffix = " " + run_mode
+    if run_mode in ["A"]:
+        use_mode = True
+    else:
+        use_mode = False
+
+    (
+        sample_elbo,
+        sample_likelihoods,
+        sample_kls,
+        sample_stats
+    ) = get_elbo_and_stats(x, model, criterion, False, use_mode)
+
+    # dataset, k, score name
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO' + suffix].extend(sample_elbo.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD' + suffix].extend(sample_likelihoods.tolist())
+    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL' + suffix].extend(sample_kls.tolist())
+
+    for k in range(1, model.n_latents):
+        decode_from_p = get_decode_from_p(model.n_latents, k=k)
+        if run_mode == "A":
+            use_mode = True
+        elif run_mode == "B":
+            use_mode = False
+        else:
+            use_mode = decode_from_p
+
+        (
+            sample_elbo_k,
+            sample_likelihoods_k,
+            sample_kls_k,
+            sample_stats_k
+        ) = get_elbo_and_stats(x, model, criterion, decode_from_p=decode_from_p, use_mode=use_mode)
+
+        # dataset, k, score name
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO' + suffix].extend(sample_elbo_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD' + suffix].extend(sample_likelihoods_k.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'+ suffix].extend(sample_kls_k.tolist())
+
+        # Get ratio scores
+        LLR = sample_elbo - sample_elbo_k
+        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
+        KL_RATIO = sample_kls - sample_kls_k
+
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR' + suffix].extend(LLR.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO' + suffix].extend(LIKELIHOOD_RATIO.tolist())
+        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO' + suffix].extend(KL_RATIO.tolist())
+
+
+def main():
     # FILE_NAME_SETTINGS_SPEC = f"iw_elbo{args.iw_samples_elbo}-iw_lK{args.iw_samples_Lk}"
 
     # train dataset, val datasets, k, run id (in case multiple seeds), stat name
-    all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
 
     run_ids = args.run_ids.split(",")
     setup_wandb()
@@ -264,13 +395,13 @@ if __name__ == "__main__":
     for run_id in run_ids:
         LOGGER.info("RUN ID %s", run_id)
 
-        model, datamodule, dataloaders = load_model_and_data(run_id)
+        model, datamodule, dataloaders, main_dataset = load_model_and_data(run_id)
 
         device = oodd.utils.get_device() if args.device == "auto" else torch.device(args.device)
         LOGGER.info("Device %s", device)
 
         # Add additional datasets to evaluation
-        TRAIN_DATASET_KEY = list(datamodule.train_datasets.keys())[0]
+        TRAIN_DATASET_KEY = main_dataset
 
         LOGGER.info("Train dataset %s", TRAIN_DATASET_KEY)
 
@@ -289,52 +420,10 @@ if __name__ == "__main__":
                     x = x.to(device)
 
                     n += x.shape[0]
-                    (
-                        sample_elbo,
-                        sample_likelihoods,
-                        sample_kls,
-                        sample_stats
-                     ) = get_elbo_and_stats(False, False)
 
-                    # dataset, k, score name
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['ELBO'].extend(sample_elbo.tolist())
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['LIKELIHOOD'].extend(sample_likelihoods.tolist())
-                    all_scores[TRAIN_DATASET_KEY][dataset][0][run_id]['KL'].extend(sample_kls.tolist())
-                    for stat, v in sample_stats.items():
-                        all_scores[TRAIN_DATASET_KEY][dataset][0][run_id][stat].extend(v.tolist())
-
-                    for k in range(1, model.n_latents):
-                        decode_from_p = get_decode_from_p(model.n_latents, k=k)
-                        (
-                            sample_elbo_k,
-                            sample_likelihoods_k,
-                            sample_kls_k,
-                            sample_stats_k
-                         ) = get_elbo_and_stats(decode_from_p=decode_from_p, use_mode=decode_from_p)
-
-                        # dataset, k, score name
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['ELBO'].extend(sample_elbo_k.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD'].extend(sample_likelihoods_k.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL'].extend(sample_kls_k.tolist())
-                        for stat, v in sample_stats_k.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat].extend(v.tolist())
-
-                        # Get ratio scores
-                        LLR = sample_elbo - sample_elbo_k
-                        LIKELIHOOD_RATIO = sample_likelihoods - sample_likelihoods_k
-                        KL_RATIO = sample_kls - sample_kls_k
-
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LLR'].extend(LLR.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['LIKELIHOOD_RATIO'].extend(LIKELIHOOD_RATIO.tolist())
-                        all_scores[TRAIN_DATASET_KEY][dataset][k][run_id]['KL_RATIO'].extend(KL_RATIO.tolist())
-
-                        # also for other stats?
-                        sample_stats_scores_sub = get_stats_scores_sub(sample_stats, sample_stats_k)
-                        sample_stats_scores_div = get_stats_scores_div(sample_stats, sample_stats_k)
-                        for stat, v in sample_stats_scores_sub.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_sub'].extend(v.tolist())
-                        for stat, v in sample_stats_scores_div.items():
-                            all_scores[TRAIN_DATASET_KEY][dataset][k][run_id][stat + '_div'].extend(v.tolist())
+                    get_all_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id)
+                    get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, "A")
+                    get_simple_stats_for_sample(x, model, criterion, TRAIN_DATASET_KEY, dataset, run_id, "B")
 
                     if n > N_EQUAL_EXAMPLES_CAP:
                         LOGGER.warning(f"Skipping remaining iterations due to {N_EQUAL_EXAMPLES_CAP=}")
@@ -351,3 +440,11 @@ if __name__ == "__main__":
             } for dataset, d2 in d1.items()
         } for in_dataset, d1 in all_scores.items()
     }, get_save_path("all-scores.pt"))
+
+
+if __name__ == "__main__":
+    # GLOBALS
+    all_scores = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))))
+
+
+    main()

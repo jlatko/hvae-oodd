@@ -2,12 +2,12 @@ import argparse
 import inspect
 import logging
 import os
-
+import numpy as np
 from typing import List, Union, Dict, Any
 
 import torch
 
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, WeightedRandomSampler
 
 import oodd.datasets
 
@@ -37,6 +37,36 @@ def get_dataset(dataset_name: str):
     dataset_name = dataset_name[0]
     return getattr(oodd.datasets, dataset_name)
 
+def getitem(self, idx):
+    return self.item_getter(idx)[0], idx
+
+def get_pow_fn(a, b):
+    def _fn(x):
+        return (x/a) ** b
+    return _fn
+
+def get_boost_low_fn(thresh, mult):
+    def _fn(c):
+        a = np.copy(c)
+        a[c < thresh] = a[c < thresh] * mult
+        return a
+    return _fn
+
+def get_boost_high_fn(thresh, mult):
+    def _fn(c):
+        a = np.copy(c)
+        a[c > thresh] = a[c > thresh] * mult
+        return a
+    return _fn
+
+SAMPLE_MODES = {
+    "pow": get_pow_fn,
+    "boost_low": get_boost_low_fn,
+    "boost_high": get_boost_high_fn
+}
+
+def get_sample_weights(x, mode, a, b):
+    return SAMPLE_MODES[mode](a, b)(x)
 
 class DataModule:
     """Module that serves datasets and dataloaders for training, validation and testing"""
@@ -54,7 +84,9 @@ class DataModule:
         test_datasets: Union[str, List[str], Dict[str, Dict[str, Any]]] = default_datasets,
         batch_size: int = default_batch_size,
         test_batch_size: int = None,
+        wrap_datasets: bool = False,
         data_workers: int = default_data_workers,
+        sample_weigths=None,
     ):
         """A DataModule that serves several datasets for training, validation and testing.
 
@@ -80,6 +112,17 @@ class DataModule:
         self._batch_size = batch_size
         self._test_batch_size = self.test_batch_size_factor * batch_size if test_batch_size is None else test_batch_size
         self._data_workers = data_workers
+        self._wrap_datasets = wrap_datasets
+        if self._wrap_datasets:
+            oodd.datasets.TorchVisionDataset.__getitem__ = getitem
+
+        self.sample_weigths = sample_weigths
+
+        if sample_weigths is not None:
+            self._weighted = True
+        else:
+            self._weighted = False
+
 
         # Parse inputs
         train_datasets = parse_dataset_argument(train_datasets)
@@ -197,7 +240,22 @@ class DataModule:
         self.train_loaders = {name: self._wrap_train_loader(dset) for name, dset in self.train_datasets.items()}
         self.val_loaders = {name: self._wrap_test_loader(dset) for name, dset in self.val_datasets.items()}
         self.test_loaders = {name: self._wrap_test_loader(dset) for name, dset in self.test_datasets.items()}
-        self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_datasets else None
+        if self._weighted:
+            self.train_loader = self._wrap_weighted_loader(self.train_dataset) if self.train_datasets else None
+        else:
+            self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_datasets else None
+
+    def _wrap_weighted_loader(self, dataset):
+        sampler = WeightedRandomSampler(self.sample_weigths, len(self.sample_weigths))
+        return DataLoader(
+            sampler=sampler,
+            dataset=dataset,
+            shuffle=False,
+            batch_size=self.batch_size,
+            num_workers=self.data_workers,
+            pin_memory=False,  # This cannot be True with persistent_workers True (at least not with non Tensor outputs)
+            persistent_workers=True,  # This avoids reinstantiating the datasets (which would re-seed)
+        )
 
     def _wrap_train_loader(self, dataset):
         return self._wrap_dataloader(dataset, shuffle=True, batch_size=self.batch_size)
@@ -237,7 +295,7 @@ class DataModule:
         """Setting batch_size also updates the training set data loaders"""
         self._batch_size = batch_size
         self.train_loaders = {name: self._wrap_train_loader(dset) for name, dset in self.train_datasets.items()}
-        self.train_loader = self._wrap_train_loader(self.train_dataset)
+        self.train_loader = self._wrap_train_loader(self.train_dataset) if self.train_dataset else None
 
     @property
     def test_batch_size(self):
