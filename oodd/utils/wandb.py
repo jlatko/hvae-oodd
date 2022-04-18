@@ -10,11 +10,13 @@ REQUIRED_CHECKPOINT_FILES = [
     MODEL_STATE_DICT_STR,
     DATAMODULE_CONFIG_STR
 ]
+WANDB_PROJECT = ''
+WANDB_USER = ''
 
 def find_or_download_checkpoint(
         run_id=None,
         run=None,
-        project="johnnysummer/hvae",
+        project=f"{WANDB_USER}/{WANDB_PROJECT}",
         force_redownload=False,
         target_dir="/scratch/s193223/oodd/wandb_downloads/"
 ):
@@ -47,7 +49,7 @@ def find_or_download_checkpoint(
 def download_or_find(
         run_id,
         filename,
-        project="johnnysummer/hvae",
+        project=f"{WANDB_USER}/{WANDB_PROJECT}",
         force_redownload=False,
         target_dir="/scratch/s193223/oodd/wandb_downloads/"
 ):

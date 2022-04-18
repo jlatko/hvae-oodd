@@ -19,6 +19,7 @@ import oodd.models
 import oodd.losses
 import oodd.utils
 
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
 
 LOGGER = logging.getLogger()
 

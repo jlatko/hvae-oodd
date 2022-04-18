@@ -27,6 +27,8 @@ import wandb
 from oodd.utils.argparsing import json_file_or_json_unique_keys
 from oodd.utils.wandb import find_or_download_checkpoint
 
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+
 LOGGER = logging.getLogger()
 
 
@@ -56,7 +58,7 @@ def get_all_configs():
 
 def load_run(run_id):
     api = wandb.Api()
-    run = api.run(f"johnnysummer/hvae/{run_id}")
+    run = api.run(f"{WANDB_USER}/{WANDB_PROJECT}/{run_id}")
     checkpoint_path = find_or_download_checkpoint(run=run)
     return checkpoint_path, run
 
@@ -67,7 +69,7 @@ def setup_wandb(run=None):
     if run is not None:
         tags += [tag for tag in run.tags if tag != "train"]
 
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
     wandb.config.update(args)
 

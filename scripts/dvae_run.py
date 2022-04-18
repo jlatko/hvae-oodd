@@ -6,7 +6,7 @@ import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.swa_utils import AveragedModel, SWALR
 
-from oodd.utils.wandb import download_or_find
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
 
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -95,7 +95,7 @@ def setup_wandb(train_dataset_name):
         if dargs[key]:
             tags.append(key)
 
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
 
     # wandb configuration

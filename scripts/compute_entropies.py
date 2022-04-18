@@ -21,6 +21,8 @@ import oodd.utils
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+
 LOGGER = logging.getLogger()
 
 
@@ -82,7 +84,7 @@ complexity_metrics = {
 
 def init_wandb():
     tags = ["complexity"]
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
 
     # wandb configuration

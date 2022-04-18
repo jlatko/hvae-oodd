@@ -1,3 +1,16 @@
+# 
+
+This is a fork from Jakob Havtorn's repository https://github.com/JakobHavtorn/hvae-oodd, 
+which I used as a base to perform further experiments and analysis. 
+
+Notebooks rely on weights and biases experiments that are not public, so they cannot be rerun, but I upload them as reference.
+
+---
+---
+
+original readme below
+---
+---
 # hvae-oodd
 
 <a href="https://zenodo.org/badge/latestdoi/373464051"><img src="https://zenodo.org/badge/373464051.svg" alt="DOI"></a>

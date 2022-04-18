@@ -11,6 +11,7 @@ import wandb
 
 from oodd.utils.oodd import compute_roc_pr_metrics
 from oodd.utils.wandb import download_or_find
+from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
 
 LOGGER = logging.getLogger()
 
@@ -21,6 +22,7 @@ parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", he
 
 args = parser.parse_args()
 rich.print(vars(args))
+
 
 SCORES_TO_NEGATE = [
     "ELBO", 'LIKELIHOOD',
@@ -38,11 +40,11 @@ def load_data(run_id):
 
 def setup_wandb(run_id):
     api = wandb.Api()
-    run = api.run(f"johnnysummer/hvae/{run_id}")
+    run = api.run(f"{WANDB_USER}/{WANDB_PROJECT}/{run_id}")
 
     tags = ["results", run_id]
 
-    wandb.init(project="hvae", entity="johnnysummer", dir=args.save_dir, tags=tags)
+    wandb.init(project=WANDB_PROJECT, entity=WANDB_USER, dir=args.save_dir, tags=tags)
     args.save_dir = wandb.run.dir
     wandb.config.update(args)
 
