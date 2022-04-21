@@ -1,0 +1,9 @@
+{
+   "FashionMNISTBinarized": {"split": "train"},
+   "MNISTBinarized": {"split": "train"},
+   "notMNISTBinarized": {"split": "train"},
+   "Omniglot28x28Binarized": {"split": "train"},
+   "Omniglot28x28InvertedBinarized": {"split": "train"},
+   "KMNISTBinarized": {"split": "train"},
+   "SmallNORB28x28Binarized": {"split": "train"}
+}

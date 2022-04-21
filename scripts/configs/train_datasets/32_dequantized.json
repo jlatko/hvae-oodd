@@ -1,0 +1,5 @@
+{
+    "CIFAR10Dequantized": {"dynamic": false, "split": "train"},
+    "SVHNDequantized": {"dynamic": false, "split": "train"},
+    "FFHQ32Dequantized": {"split": "train"}
+}
