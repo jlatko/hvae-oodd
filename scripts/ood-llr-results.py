@@ -19,13 +19,14 @@ import oodd.models
 import oodd.losses
 import oodd.utils
 
-from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+from oodd.utils.wandb import download_or_find
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 
 LOGGER = logging.getLogger()
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--source_dir", type=str, default="/scratch/s193223/oodd/results", help="directory from which to load scores")
+parser.add_argument("--source_dir", type=str, default=f"{DATA_PATH}/oodd/results", help="directory from which to load scores")
 
 args = parser.parse_args()
 rich.print(vars(args))

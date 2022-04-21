@@ -11,14 +11,15 @@ import wandb
 
 from oodd.utils.oodd import compute_roc_pr_metrics
 from oodd.utils.wandb import download_or_find
-from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+from oodd.utils.wandb import download_or_find
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 
 LOGGER = logging.getLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--run_id", type=str, help="wandb run id")
 parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
-parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
+parser.add_argument("--save_dir", type=str, default= f"{DATA_PATH}/oodd", help="directory for saving results")
 
 args = parser.parse_args()
 rich.print(vars(args))

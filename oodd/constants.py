@@ -19,3 +19,8 @@ KL_DIVERGENCE = "KL(q(z|x), p(z)"
 
 ROOT_PATH = __file__.replace("/oodd/constants.py", "")
 DATA_DIRECTORY = os.path.join(ROOT_PATH, "data")
+
+
+WANDB_PROJECT = ''
+WANDB_USER = ''
+DATA_PATH = ''

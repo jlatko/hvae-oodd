@@ -27,7 +27,8 @@ import wandb
 from oodd.utils.argparsing import json_file_or_json_unique_keys
 from oodd.utils.wandb import find_or_download_checkpoint
 
-from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+from oodd.utils.wandb import download_or_find
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 
 LOGGER = logging.getLogger()
 
@@ -43,7 +44,7 @@ parser.add_argument("--device", type=str, default="auto", help="device to evalua
 parser.add_argument("--use_test", action="store_true")
 parser.add_argument("--use_train", action="store_true")
 parser.add_argument("--val_datasets", type=json_file_or_json_unique_keys, default=None)
-parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving results")
+parser.add_argument("--save_dir", type=str, default= f"{DATA_PATH}/oodd", help="directory for saving results")
 
 args = parser.parse_args()
 rich.print(vars(args))

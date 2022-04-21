@@ -1,6 +1,7 @@
 import wandb
 import os
 
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 from oodd.datasets.data_module import DATAMODULE_CONFIG_STR
 from oodd.models.base_module import MODEL_CLASS_NAME_STR, MODEL_INIT_KWRGS_STR, MODEL_STATE_DICT_STR
 
@@ -10,15 +11,13 @@ REQUIRED_CHECKPOINT_FILES = [
     MODEL_STATE_DICT_STR,
     DATAMODULE_CONFIG_STR
 ]
-WANDB_PROJECT = ''
-WANDB_USER = ''
 
 def find_or_download_checkpoint(
         run_id=None,
         run=None,
         project=f"{WANDB_USER}/{WANDB_PROJECT}",
         force_redownload=False,
-        target_dir="/scratch/s193223/oodd/wandb_downloads/"
+        target_dir=f"{DATA_PATH}/oodd/wandb_downloads/"
 ):
     if run_id is not None:
         api = wandb.Api()
@@ -51,7 +50,7 @@ def download_or_find(
         filename,
         project=f"{WANDB_USER}/{WANDB_PROJECT}",
         force_redownload=False,
-        target_dir="/scratch/s193223/oodd/wandb_downloads/"
+        target_dir=f"{DATA_PATH}/oodd/wandb_downloads/"
 ):
     api = wandb.Api()
     run = api.run(f"{project}/{run_id}")

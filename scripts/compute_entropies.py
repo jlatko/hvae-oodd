@@ -21,7 +21,9 @@ import oodd.utils
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 
-from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+from oodd.utils.wandb import download_or_find
+
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 
 LOGGER = logging.getLogger()
 
@@ -31,7 +33,7 @@ parser.add_argument("--dataset_name", type=str, default="FashionMNISTBinarized",
 parser.add_argument("--complexity", type=str, default="mean_local_entropy", help="complexity metric")
 parser.add_argument("--complexity_param", type=int, default=3, help="locality radius or compression mode")
 parser.add_argument("--n_eval_examples", type=int, default=10000, help="cap on the number of examples to use")
-parser.add_argument("--save_dir", type=str, default="/scratch/s193223/oodd", help="directory to store scores in")
+parser.add_argument("--save_dir", type=str, default=f"{DATA_PATH}/oodd", help="directory to store scores in")
 parser = oodd.datasets.DataModule.get_argparser(parents=[parser])
 
 args = parser.parse_args()

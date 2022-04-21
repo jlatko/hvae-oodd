@@ -6,7 +6,8 @@ import os
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.optim.swa_utils import AveragedModel, SWALR
 
-from oodd.utils.wandb import download_or_find, WANDB_USER, WANDB_PROJECT
+from oodd.utils.wandb import download_or_find
+from oodd.constants import WANDB_USER, WANDB_PROJECT, DATA_PATH
 
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -51,7 +52,7 @@ parser.add_argument("--free_nats_end", type=float, default=0.0, help="final free
 parser.add_argument("--n_eval_samples", type=int, default=32, help="samples from prior for quality inspection")
 parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed")
 parser.add_argument("--test_every", type=int, default=20, help="epochs between evaluations")
-parser.add_argument("--save_dir", type=str, default= "/scratch/s193223/oodd", help="directory for saving models")
+parser.add_argument("--save_dir", type=str, default= f"{DATA_PATH}/oodd", help="directory for saving models")
 parser.add_argument("--tqdm", action= "store_true", help="whether to display progressbar")
 parser.add_argument("--run_name", type=str, default=None, help="name this wandb run")
 parser.add_argument("--test_verbosity", type=int, default=1, help="how much test values to log")

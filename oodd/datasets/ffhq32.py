@@ -21,7 +21,7 @@ from oodd.constants import TRAIN_SPLIT, VAL_SPLIT, DATA_DIRECTORY
 
 LOGGER = logging.getLogger(__file__)
 
-FFHQ_DIRECTORY = "/scratch/s193223/ffhq"
+FFHQ_DIRECTORY = f"{DATA_PATH}/ffhq"
 
 class FFHQ32(data.Dataset):
     """Base level FFHQ32 dataset"""
