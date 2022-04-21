@@ -16,7 +16,7 @@ import oodd
 
 from oodd.datasets import transforms
 from oodd.datasets import BaseDataset
-from oodd.constants import TRAIN_SPLIT, VAL_SPLIT, DATA_DIRECTORY
+from oodd.constants import TRAIN_SPLIT, VAL_SPLIT, DATA_DIRECTORY, DATA_PATH
 
 
 LOGGER = logging.getLogger(__file__)
